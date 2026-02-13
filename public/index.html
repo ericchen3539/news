@@ -22,6 +22,7 @@
     .checkbox-group label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
     .row { display: flex; gap: 8px; align-items: flex-end; margin: 8px 0; }
     .section-hint { color: #666; font-size: 0.9em; margin: -8px 0 12px; }
+    .config-summary { color: #666; font-size: 0.9em; margin-top: 12px; display: block; }
     .source-form { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
     .source-form label { margin: 0; }
     .source-form input { width: 100%; }
@@ -99,7 +100,7 @@
       <label>预设类别（多选）</label>
       <div class="checkbox-group" id="filter-categories"></div>
       <button id="btn-save-filters">保存</button>
-      <div class="section-hint" id="filter-summary"></div>
+      <div class="config-summary" id="filter-summary"></div>
       <div id="filter-msg" class="hidden"></div>
     </section>
     <section>
@@ -132,7 +133,7 @@
       <label>时区</label>
       <select id="schedule-timezone"></select>
       <button id="btn-save-schedule">保存</button>
-      <div class="section-hint" id="schedule-summary"></div>
+      <div class="config-summary" id="schedule-summary"></div>
       <div id="schedule-msg" class="hidden"></div>
     </section>
   </div>
