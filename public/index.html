@@ -125,7 +125,7 @@
       <label>发送时间</label>
       <input type="time" id="schedule-time" value="07:00">
       <label>时区</label>
-      <input type="text" id="schedule-timezone" value="Asia/Shanghai" placeholder="Asia/Shanghai">
+      <select id="schedule-timezone"></select>
       <button id="btn-save-schedule">保存</button>
       <div id="schedule-msg" class="hidden"></div>
     </section>
@@ -273,7 +273,16 @@
 
       document.getElementById('schedule-frequency').value = schedule.frequency || 'daily';
       document.getElementById('schedule-time').value = schedule.send_time || '07:00';
-      document.getElementById('schedule-timezone').value = schedule.timezone || 'Asia/Shanghai';
+      const tzSel = document.getElementById('schedule-timezone');
+      const storedTz = schedule.timezone || getSystemTimezone();
+      if (storedTz === getSystemTimezone()) {
+        tzSel.value = 'auto';
+      } else {
+        if (!TIMEZONES.some(([v]) => v === storedTz)) {
+          tzSel.innerHTML += `<option value="${storedTz}">${storedTz}</option>`;
+        }
+        tzSel.value = storedTz;
+      }
       document.getElementById('schedule-weekday').value = String(schedule.weekday ?? 1);
       document.getElementById('schedule-day').value = String(schedule.day_of_month ?? 1);
 
@@ -294,6 +303,33 @@
 
     const daySelect = document.getElementById('schedule-day');
     for (let i = 1; i <= 31; i++) daySelect.innerHTML += `<option value="${i}">${i}日</option>`;
+
+    const TIMEZONES = [
+      ['auto', '自动（使用系统时区）'],
+      ['Asia/Shanghai', '中国 (UTC+8)'],
+      ['Asia/Hong_Kong', '香港 (UTC+8)'],
+      ['Asia/Taipei', '台北 (UTC+8)'],
+      ['Asia/Tokyo', '东京 (UTC+9)'],
+      ['Asia/Singapore', '新加坡 (UTC+8)'],
+      ['Europe/London', '伦敦 (UTC+0/1)'],
+      ['Europe/Paris', '巴黎 (UTC+1/2)'],
+      ['Europe/Berlin', '柏林 (UTC+1/2)'],
+      ['America/New_York', '纽约 (UTC-5/-4)'],
+      ['America/Chicago', '芝加哥 (UTC-6/-5)'],
+      ['America/Los_Angeles', '洛杉矶 (UTC-8/-7)'],
+      ['Australia/Sydney', '悉尼 (UTC+10/11)'],
+      ['UTC', 'UTC'],
+    ];
+    function getSystemTimezone() { return Intl.DateTimeFormat().resolvedOptions().timeZone; }
+    function initTimezoneSelect() {
+      const sel = document.getElementById('schedule-timezone');
+      const sysTz = getSystemTimezone();
+      sel.innerHTML = TIMEZONES.map(([val, label]) => {
+        const optLabel = val === 'auto' ? `自动（当前: ${sysTz}）` : label;
+        return `<option value="${val}">${optLabel}</option>`;
+      }).join('');
+    }
+    initTimezoneSelect();
 
     document.getElementById('btn-add-source').addEventListener('click', async () => {
       const url = document.getElementById('source-url').value.trim();
@@ -319,7 +355,8 @@
     document.getElementById('btn-save-schedule').addEventListener('click', async () => {
       const frequency = document.getElementById('schedule-frequency').value;
       const send_time = document.getElementById('schedule-time').value;
-      const timezone = document.getElementById('schedule-timezone').value.trim();
+      let timezone = document.getElementById('schedule-timezone').value.trim();
+      if (timezone === 'auto') timezone = getSystemTimezone();
       const weekday = parseInt(document.getElementById('schedule-weekday').value, 10);
       const day_of_month = parseInt(document.getElementById('schedule-day').value, 10);
       await api('/schedule', { method: 'PUT', body: JSON.stringify({ frequency, send_time, timezone, weekday, day_of_month }) });
