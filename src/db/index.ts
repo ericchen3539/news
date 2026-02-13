@@ -1,10 +1,25 @@
 /**
  * Database layer: Neon Postgres when DATABASE_URL is postgres(ql)://, else sql.js for local file.
+ * For Vercel + Neon: use pooled connection string (host contains -pooler) to reduce "fetch failed" errors.
  */
 
 const dbUrl = process.env.DATABASE_URL ?? "file:./data/news.db";
 const useNeon =
   dbUrl.startsWith("postgres://") || dbUrl.startsWith("postgresql://");
+
+const NEON_RETRY_ATTEMPTS = 3;
+const NEON_RETRY_DELAY_MS = 600;
+
+function isNeonRetryableError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  const causeMsg = err instanceof Error && err.cause instanceof Error ? err.cause.message : "";
+  return (
+    msg.includes("fetch failed") ||
+    msg.includes("other side closed") ||
+    msg.includes("UND_ERR_SOCKET") ||
+    causeMsg.includes("other side closed")
+  );
+}
 
 let sqlNeon: ReturnType<typeof import("@neondatabase/serverless").neon> | null =
   null;
@@ -20,13 +35,26 @@ export async function getDb(): Promise<
   }
   if (useNeon) {
     if (!sqlNeon) {
-      const { neon } = await import("@neondatabase/serverless");
-      sqlNeon = neon(dbUrl);
-      const { SCHEMA_PG_STATEMENTS } = await import("./schema-pg.js");
-      for (const stmt of SCHEMA_PG_STATEMENTS) {
-        await sqlNeon.query(stmt);
+      for (let attempt = 1; attempt <= NEON_RETRY_ATTEMPTS; attempt++) {
+        try {
+          const { neon } = await import("@neondatabase/serverless");
+          sqlNeon = neon(dbUrl);
+          const { SCHEMA_PG_STATEMENTS } = await import("./schema-pg.js");
+          for (const stmt of SCHEMA_PG_STATEMENTS) {
+            await sqlNeon.query(stmt);
+          }
+          break;
+        } catch (err) {
+          sqlNeon = null;
+          if (!isNeonRetryableError(err) || attempt === NEON_RETRY_ATTEMPTS) {
+            throw err;
+          }
+          console.warn(`[Db] Neon connection attempt ${attempt} failed, retrying:`, err instanceof Error ? err.message : err);
+          await new Promise((r) => setTimeout(r, NEON_RETRY_DELAY_MS * attempt));
+        }
       }
     }
+    if (!sqlNeon) throw new Error("Neon connection failed after retries");
     return sqlNeon;
   }
 

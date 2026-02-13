@@ -104,6 +104,16 @@ sendVerificationEmail(email, verifyUrl).catch((err) =>
 
 ---
 
+## Neon 连接错误（fetch failed / other side closed）
+
+若 Vercel Logs 出现 `NeonDbError: Error connecting to database: fetch failed` 或 `SocketError: other side closed`：
+
+1. **使用 Pooled 连接串**：在 Neon Console → Connect → 开启 **Connection pooling**，复制带 `-pooler` 的 host（如 `ep-xxx-pooler.us-east-2.aws.neon.tech`），更新 Vercel 的 `DATABASE_URL`
+2. **代码已加重试**：`getDb` 和 Cron handler 会对该错误自动重试 2–3 次
+3. **确认 `?sslmode=require`**：连接串末尾需包含 `?sslmode=require`
+
+---
+
 ## 下一步
 
 1. 完成步骤 1–3 的排查
