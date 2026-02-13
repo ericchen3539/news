@@ -328,6 +328,7 @@
         const optLabel = val === 'auto' ? `自动（当前: ${sysTz}）` : label;
         return `<option value="${val}">${optLabel}</option>`;
       }).join('');
+      sel.value = 'auto';
     }
     initTimezoneSelect();
 
