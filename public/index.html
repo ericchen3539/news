@@ -99,6 +99,7 @@
       <label>预设类别（多选）</label>
       <div class="checkbox-group" id="filter-categories"></div>
       <button id="btn-save-filters">保存</button>
+      <div class="section-hint" id="filter-summary"></div>
       <div id="filter-msg" class="hidden"></div>
     </section>
     <section>
@@ -131,6 +132,7 @@
       <label>时区</label>
       <select id="schedule-timezone"></select>
       <button id="btn-save-schedule">保存</button>
+      <div class="section-hint" id="schedule-summary"></div>
       <div id="schedule-msg" class="hidden"></div>
     </section>
   </div>
@@ -236,19 +238,14 @@
       } catch (e) { msg.textContent = e.message; msg.classList.remove('hidden'); }
     });
 
-    async function loadFilterPresets() {
-      const presets = await api('/filter-presets');
-      const div = document.getElementById('filter-categories');
-      div.innerHTML = presets.map(p => `
-        <label><input type="checkbox" value="${p.id}"> ${p.label}</label>
-      `).join('');
-    }
+    const WEEKDAY_NAMES = ['周日','周一','周二','周三','周四','周五','周六'];
 
     async function loadConfig() {
-      const [sources, filters, schedule] = await Promise.all([
+      const [sources, filters, schedule, presets] = await Promise.all([
         api('/sources'),
         api('/filters'),
-        api('/schedule')
+        api('/schedule'),
+        api('/filter-presets')
       ]);
 
       const summary = document.getElementById('source-summary');
@@ -269,11 +266,20 @@
       });
 
       document.getElementById('filter-mode').value = filters.mode || 'include';
-      await loadFilterPresets();
+      const filterCategoriesDiv = document.getElementById('filter-categories');
+      filterCategoriesDiv.innerHTML = presets.map(p => `
+        <label><input type="checkbox" value="${p.id}"> ${p.label}</label>
+      `).join('');
       (filters.categories || []).forEach(id => {
         const cb = document.querySelector(`#filter-categories input[value="${id}"]`);
         if (cb) cb.checked = true;
       });
+      const presetMap = Object.fromEntries(presets.map(p => [p.id, p.label]));
+      const filterLabels = (filters.categories || []).map(id => presetMap[id] || id).filter(Boolean);
+      const filterModeText = (filters.mode || 'include') === 'include' ? '包含' : '排除';
+      document.getElementById('filter-summary').textContent = filterLabels.length
+        ? `当前：${filterModeText}模式，已选：${filterLabels.join('、')}`
+        : '当前：未选择类别';
 
       document.getElementById('schedule-frequency').value = schedule.frequency || 'daily';
       const [savedHour, savedMin] = (schedule.send_time || '06:00').split(':');
@@ -297,6 +303,14 @@
       document.getElementById('label-weekday').classList.toggle('hidden', !['weekly','biweekly'].includes(freq));
       document.getElementById('schedule-day').classList.toggle('hidden', freq !== 'monthly');
       document.getElementById('label-day').classList.toggle('hidden', freq !== 'monthly');
+
+      const sendTime = schedule.send_time || '06:00';
+      const tz = schedule.timezone || getSystemTimezone();
+      let scheduleText = '';
+      if (freq === 'daily') scheduleText = `每天 ${sendTime}`;
+      else if (freq === 'weekly' || freq === 'biweekly') scheduleText = `${freq === 'biweekly' ? '每两周' : '每周'}${WEEKDAY_NAMES[schedule.weekday ?? 1]} ${sendTime}`;
+      else if (freq === 'monthly') scheduleText = `每月${schedule.day_of_month ?? 1}日 ${sendTime}`;
+      document.getElementById('schedule-summary').textContent = `当前：${scheduleText} (${tz})`;
     }
 
     document.getElementById('schedule-frequency').addEventListener('change', () => {
@@ -360,9 +374,13 @@
     document.getElementById('btn-save-filters').addEventListener('click', async () => {
       const mode = document.getElementById('filter-mode').value;
       const categories = [...document.querySelectorAll('#filter-categories input:checked')].map(cb => cb.value);
+      const labels = [...document.querySelectorAll('#filter-categories input:checked')].map(cb => cb.parentNode.textContent.trim());
       await api('/filters', { method: 'PUT', body: JSON.stringify({ mode, categories }) });
       const msg = document.getElementById('filter-msg');
       msg.className = 'success'; msg.textContent = '已保存'; msg.classList.remove('hidden');
+      document.getElementById('filter-summary').textContent = labels.length
+        ? `当前：${mode === 'include' ? '包含' : '排除'}模式，已选：${labels.join('、')}`
+        : '当前：未选择类别';
       setTimeout(() => msg.classList.add('hidden'), 2000);
     });
 
@@ -376,6 +394,11 @@
       await api('/schedule', { method: 'PUT', body: JSON.stringify({ frequency, send_time, timezone, weekday, day_of_month }) });
       const msg = document.getElementById('schedule-msg');
       msg.className = 'success'; msg.textContent = '已保存'; msg.classList.remove('hidden');
+      let scheduleText = '';
+      if (frequency === 'daily') scheduleText = `每天 ${send_time}`;
+      else if (frequency === 'weekly' || frequency === 'biweekly') scheduleText = `${frequency === 'biweekly' ? '每两周' : '每周'}${WEEKDAY_NAMES[weekday]} ${send_time}`;
+      else if (frequency === 'monthly') scheduleText = `每月${day_of_month}日 ${send_time}`;
+      document.getElementById('schedule-summary').textContent = `当前：${scheduleText} (${timezone})`;
       setTimeout(() => msg.classList.add('hidden'), 2000);
     });
 
