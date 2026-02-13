@@ -16,7 +16,7 @@ authRouter.post("/register", async (req, res) => {
   try {
     const result = await register(email, password);
     if (!result.ok) {
-      res.status(400).json({ error: result.error });
+      res.status(result.statusCode ?? 400).json({ error: result.error });
       return;
     }
     res.json({ message: "Registration successful. Check your email to verify." });

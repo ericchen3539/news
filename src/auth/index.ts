@@ -16,7 +16,7 @@ const TOKEN_EXPIRY_HOURS = 24;
 export async function register(
   email: string,
   password: string
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<{ ok: boolean; error?: string; statusCode?: number }> {
   const db = await getDb();
 
   const existing = await get<[number] | { id: number }>(db, "SELECT id FROM users WHERE email = ?", [
@@ -46,10 +46,14 @@ export async function register(
 
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
   const verifyUrl = `${appUrl}/verify?token=${token}`;
-  // Fire-and-forget: do not block response on SMTP (avoids timeout when SMTP is slow/unreachable)
-  sendVerificationEmail(email, verifyUrl).catch((err) =>
-    console.error("[Auth] Failed to send verification email:", err)
-  );
+
+  // Must await on Vercel: serverless functions terminate after response, fire-and-forget never completes
+  try {
+    await sendVerificationEmail(email, verifyUrl);
+  } catch (err) {
+    console.error("[Auth] Failed to send verification email:", err);
+    return { ok: false, error: "Could not send verification email. Please try again later.", statusCode: 503 };
+  }
 
   if (process.env.DEV_VERIFY_EMAIL === "1") {
     const now = Math.floor(Date.now() / 1000);
