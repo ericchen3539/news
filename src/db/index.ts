@@ -22,8 +22,10 @@ export async function getDb(): Promise<
     if (!sqlNeon) {
       const { neon } = await import("@neondatabase/serverless");
       sqlNeon = neon(dbUrl);
-      const { SCHEMA_PG } = await import("./schema-pg.js");
-      await sqlNeon.query(SCHEMA_PG);
+      const { SCHEMA_PG_STATEMENTS } = await import("./schema-pg.js");
+      for (const stmt of SCHEMA_PG_STATEMENTS) {
+        await sqlNeon.query(stmt);
+      }
     }
     return sqlNeon;
   }

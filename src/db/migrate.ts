@@ -5,7 +5,7 @@
 
 import { getDb, saveDb } from "./index.js";
 import { SCHEMA } from "./schema.js";
-import { SCHEMA_PG } from "./schema-pg.js";
+import { SCHEMA_PG_STATEMENTS } from "./schema-pg.js";
 
 const dbUrl = process.env.DATABASE_URL ?? "file:./data/news.db";
 const useNeon =
@@ -14,7 +14,9 @@ const useNeon =
 async function migrate() {
   const db = await getDb();
   if (typeof (db as { query?: unknown }).query === "function") {
-    await (db as { query: (s: string) => Promise<unknown> }).query(SCHEMA_PG);
+    for (const stmt of SCHEMA_PG_STATEMENTS) {
+      await (db as { query: (s: string) => Promise<unknown> }).query(stmt);
+    }
   } else {
     (db as { run: (s: string) => void }).run(SCHEMA);
     saveDb();
