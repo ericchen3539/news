@@ -275,7 +275,7 @@
       document.getElementById('schedule-time').value = schedule.send_time || '07:00';
       const tzSel = document.getElementById('schedule-timezone');
       const storedTz = schedule.timezone || getSystemTimezone();
-      if (storedTz === getSystemTimezone()) {
+      if (!schedule.hasSchedule || storedTz === getSystemTimezone()) {
         tzSel.value = 'auto';
       } else {
         if (!TIMEZONES.some(([v]) => v === storedTz)) {

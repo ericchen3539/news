@@ -35,7 +35,7 @@ scheduleRouter.get("/", async (req, res) => {
     [userId]
   );
   if (!row) {
-    res.json(DEFAULT_SCHEDULE);
+    res.json({ ...DEFAULT_SCHEDULE, hasSchedule: false });
     return;
   }
   const frequency = Array.isArray(row) ? row[0] : row.frequency;
@@ -43,7 +43,7 @@ scheduleRouter.get("/", async (req, res) => {
   const timezone = Array.isArray(row) ? row[2] : row.timezone;
   const weekday = Array.isArray(row) ? row[3] : row.weekday;
   const day_of_month = Array.isArray(row) ? row[4] : row.day_of_month;
-  res.json({ frequency, send_time, timezone, weekday, day_of_month });
+  res.json({ frequency, send_time, timezone, weekday, day_of_month, hasSchedule: true });
 });
 
 scheduleRouter.put("/", async (req, res) => {
