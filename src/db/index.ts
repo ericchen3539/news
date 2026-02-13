@@ -1,12 +1,13 @@
 /**
  * Database layer using sql.js.
- * Provides a synchronous-style API and persists to file.
+ * On Vercel: uses /tmp (ephemeral). For persistence, use Turso and set DATABASE_URL=libsql://...
  */
 
 import initSqlJs, { type Database } from "sql.js";
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
+import { SCHEMA } from "./schema.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -14,6 +15,7 @@ let db: Database | null = null;
 
 const getDbPath = (): string => {
   const url = process.env.DATABASE_URL ?? "file:./data/news.db";
+  if (process.env.VERCEL === "1") return "/tmp/news.db";
   const match = url.match(/^file:(.+)$/);
   return match ? join(process.cwd(), match[1]) : join(process.cwd(), "data", "news.db");
 };
@@ -34,6 +36,7 @@ export async function getDb(): Promise<Database> {
     db = new SQL.Database(buffer);
   } else {
     db = new SQL.Database();
+    db.run(SCHEMA);
   }
 
   return db;

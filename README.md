@@ -11,6 +11,15 @@
 - 发送时间与星期几 / 每月几号可自定义，默认 7:00
 - 单一表格输出：标题（中文）、摘要（中文）、源链接、来源
 
+## 部署到 Vercel
+
+1. 在 [Vercel](https://vercel.com) 导入 GitHub 仓库 `ericchen3539/news`
+2. 在项目设置中添加环境变量：`JWT_SECRET`、`SMTP_*`、`APP_URL`（部署后的域名）
+3. **数据库**：Vercel 为无状态环境，需使用 [Turso](https://turso.tech) 等外部数据库。在 Turso 创建库后，设置 `DATABASE_URL`（libsql://...）和 `DATABASE_AUTH_TOKEN`
+4. 推送代码后自动部署
+
+本地 `vercel deploy` 需先执行 `vercel link` 关联项目。
+
 ## 快速开始
 
 ### 环境变量
