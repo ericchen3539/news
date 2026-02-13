@@ -178,15 +178,23 @@
       }
       btn.disabled = true;
       btn.textContent = '注册中...';
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
       try {
-        await api('/auth/register', { method: 'POST', body: JSON.stringify({ email, password }) });
+        await api('/auth/register', {
+          method: 'POST',
+          body: JSON.stringify({ email, password }),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
         msg.className = 'success';
         msg.textContent = '注册成功，请查收邮件验证。';
         msg.classList.remove('hidden');
         msg.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       } catch (e) {
+        clearTimeout(timeoutId);
         msg.className = 'error';
-        msg.textContent = e?.message || '注册失败，请稍后重试';
+        msg.textContent = e?.name === 'AbortError' ? '请求超时，请检查网络或稍后重试' : (e?.message || '注册失败，请稍后重试');
         msg.classList.remove('hidden');
         msg.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       } finally {

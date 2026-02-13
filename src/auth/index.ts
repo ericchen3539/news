@@ -46,7 +46,12 @@ export async function register(
 
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
   const verifyUrl = `${appUrl}/verify?token=${token}`;
-  await sendVerificationEmail(email, verifyUrl);
+  try {
+    await sendVerificationEmail(email, verifyUrl);
+  } catch (err) {
+    console.error("[Auth] Failed to send verification email:", err);
+    // User is registered; they can use manual verify from login page
+  }
 
   if (process.env.DEV_VERIFY_EMAIL === "1") {
     const now = Math.floor(Date.now() / 1000);
