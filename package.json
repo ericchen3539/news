@@ -8,7 +8,9 @@
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "db:migrate": "tsx src/db/migrate.ts",
-    "cron": "tsx src/cron/run.ts"
+    "cron": "tsx src/cron/run.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@libsql/client": "^0.17.0",
@@ -33,6 +35,7 @@
     "@types/nodemailer": "^7.0.9",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3",
-    "vercel": "^50.17.1"
+    "vercel": "^50.17.1",
+    "vitest": "^4.0.18"
   }
 }

@@ -56,6 +56,10 @@ export async function sendDigestEmail(
   htmlTable: string,
   subject = "Your News Digest"
 ): Promise<void> {
+  if (process.env.SMTP_HOST === "skip" || !process.env.SMTP_HOST) {
+    console.log("[Dev] Skip SMTP. Digest would send to:", to, "| Subject:", subject);
+    return;
+  }
   const transport = getTransporter();
   await transport.sendMail({
     from: process.env.SMTP_FROM ?? "News Digest <noreply@example.com>",

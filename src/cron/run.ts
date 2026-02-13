@@ -11,7 +11,7 @@ import { translateBatch } from "../translate/index.js";
 import { buildDigestTable } from "../email/template.js";
 import { sendDigestEmail } from "../email/send.js";
 
-interface UserToNotify {
+export interface UserToNotify {
   userId: number;
   email: string;
   sources: { source_url: string; label: string }[];
@@ -27,7 +27,7 @@ function rowToSource(r: [string, string] | { source_url: string; label: string }
   return Array.isArray(r) ? r : [r.source_url, r.label];
 }
 
-async function getUsersToNotify(): Promise<UserToNotify[]> {
+export async function getUsersToNotify(): Promise<UserToNotify[]> {
   const db = await getDb();
 
   const users = await all<[number, string] | { id: number; email: string }>(
@@ -119,7 +119,57 @@ async function getUsersToNotify(): Promise<UserToNotify[]> {
   return result;
 }
 
-async function processUser(user: UserToNotify): Promise<void> {
+/**
+ * Fetches a single user's digest config (bypasses schedule check).
+ * Used by dev send-digest-now endpoint.
+ */
+export async function getUserForDigest(userId: number): Promise<UserToNotify | null> {
+  const db = await getDb();
+
+  const userRow = await get<[number, string] | { id: number; email: string }>(
+    db,
+    "SELECT id, email FROM users WHERE id = ? AND verified_at IS NOT NULL",
+    [userId]
+  );
+  if (!userRow) return null;
+
+  const [uid, email] = rowToUser(userRow);
+
+  const sourcesRows = await all<[string, string] | { source_url: string; label: string }>(
+    db,
+    "SELECT source_url, label FROM user_sources WHERE user_id = ?",
+    [uid]
+  );
+  if (sourcesRows.length === 0) return null;
+
+  const filterRow = await get<[string, string] | { mode: string; categories_json: string }>(
+    db,
+    "SELECT mode, categories_json FROM user_filters WHERE user_id = ?",
+    [uid]
+  );
+  const modeVal = Array.isArray(filterRow) ? filterRow?.[0] : filterRow?.mode;
+  const mode = (modeVal as "include" | "exclude") ?? "include";
+  let categories: string[] = [];
+  try {
+    const catJson = Array.isArray(filterRow) ? filterRow?.[1] : filterRow?.categories_json;
+    categories = JSON.parse(catJson ?? "[]") ?? [];
+  } catch {
+    // ignore
+  }
+
+  return {
+    userId: uid,
+    email,
+    sources: sourcesRows.map((r) => {
+      const [source_url, label] = rowToSource(r);
+      return { source_url, label };
+    }),
+    mode,
+    categories,
+  };
+}
+
+export async function processUser(user: UserToNotify): Promise<void> {
   const items = await fetchAndMerge(user.sources);
   const filtered = filterNews(items, user.mode, user.categories);
   const translated = await translateBatch(filtered);
@@ -127,7 +177,7 @@ async function processUser(user: UserToNotify): Promise<void> {
   await sendDigestEmail(user.email, html);
 }
 
-async function runTick(): Promise<void> {
+export async function runTick(): Promise<void> {
   const users = await getUsersToNotify();
   for (const user of users) {
     try {
