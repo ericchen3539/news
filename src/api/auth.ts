@@ -13,12 +13,18 @@ authRouter.post("/register", async (req, res) => {
     res.status(400).json({ error: "Email and password required" });
     return;
   }
-  const result = await register(email, password);
-  if (!result.ok) {
-    res.status(400).json({ error: result.error });
-    return;
+  try {
+    const result = await register(email, password);
+    if (!result.ok) {
+      res.status(400).json({ error: result.error });
+      return;
+    }
+    res.json({ message: "Registration successful. Check your email to verify." });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Registration failed";
+    console.error("[Auth] Register error:", err);
+    res.status(500).json({ error: msg });
   }
-  res.json({ message: "Registration successful. Check your email to verify." });
 });
 
 authRouter.get("/verify", async (req, res) => {
