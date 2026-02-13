@@ -123,7 +123,11 @@
       <label id="label-day" class="hidden">每月几号</label>
       <select id="schedule-day" class="hidden"></select>
       <label>发送时间（24小时制）</label>
-      <input type="time" id="schedule-time" value="06:00">
+      <div class="row">
+        <select id="schedule-hour"></select>
+        <span>:</span>
+        <select id="schedule-minute"></select>
+      </div>
       <label>时区</label>
       <select id="schedule-timezone"></select>
       <button id="btn-save-schedule">保存</button>
@@ -272,7 +276,9 @@
       });
 
       document.getElementById('schedule-frequency').value = schedule.frequency || 'daily';
-      document.getElementById('schedule-time').value = schedule.send_time || '06:00';
+      const [savedHour, savedMin] = (schedule.send_time || '06:00').split(':');
+      document.getElementById('schedule-hour').value = savedHour?.padStart(2, '0') || '06';
+      document.getElementById('schedule-minute').value = savedMin?.padStart(2, '0') || '00';
       const tzSel = document.getElementById('schedule-timezone');
       const storedTz = schedule.timezone || getSystemTimezone();
       if (!schedule.hasSchedule || storedTz === getSystemTimezone()) {
@@ -303,6 +309,13 @@
 
     const daySelect = document.getElementById('schedule-day');
     for (let i = 1; i <= 31; i++) daySelect.innerHTML += `<option value="${i}">${i}日</option>`;
+
+    const hourSelect = document.getElementById('schedule-hour');
+    const minuteSelect = document.getElementById('schedule-minute');
+    for (let i = 0; i < 24; i++) hourSelect.innerHTML += `<option value="${String(i).padStart(2,'0')}">${String(i).padStart(2,'0')}时</option>`;
+    for (let i = 0; i < 60; i++) minuteSelect.innerHTML += `<option value="${String(i).padStart(2,'0')}">${String(i).padStart(2,'0')}分</option>`;
+    hourSelect.value = '06';
+    minuteSelect.value = '00';
 
     const TIMEZONES = [
       ['auto', '自动（使用系统时区）'],
@@ -355,7 +368,7 @@
 
     document.getElementById('btn-save-schedule').addEventListener('click', async () => {
       const frequency = document.getElementById('schedule-frequency').value;
-      const send_time = document.getElementById('schedule-time').value;
+      const send_time = document.getElementById('schedule-hour').value + ':' + document.getElementById('schedule-minute').value;
       let timezone = document.getElementById('schedule-timezone').value.trim();
       if (timezone === 'auto') timezone = getSystemTimezone();
       const weekday = parseInt(document.getElementById('schedule-weekday').value, 10);
