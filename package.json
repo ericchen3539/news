@@ -11,6 +11,7 @@
     "cron": "tsx src/cron/run.ts"
   },
   "dependencies": {
+    "@libsql/client": "^0.17.0",
     "@vitalets/google-translate-api": "^9.2.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
@@ -30,6 +31,7 @@
     "@types/node-cron": "^3.0.11",
     "@types/nodemailer": "^7.0.9",
     "tsx": "^4.19.2",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vercel": "^50.17.1"
   }
 }

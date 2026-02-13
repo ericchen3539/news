@@ -17,17 +17,19 @@ app.use(express.json());
 
 app.use("/api", apiRouter);
 
-app.use(express.static(join(__dirname, "../public")));
-
-app.get("/verify", (req, res) => {
-  res.sendFile(join(__dirname, "../public/verify.html"));
-});
-
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
 });
 
-const PORT = process.env.PORT ?? 3000;
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-});
+if (process.env.VERCEL !== "1") {
+  app.use(express.static(join(__dirname, "../public")));
+  app.get("/verify", (_req, res) => {
+    res.sendFile(join(__dirname, "../public/verify.html"));
+  });
+  const PORT = process.env.PORT ?? 3000;
+  app.listen(PORT, () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
+}
+
+export default app;
