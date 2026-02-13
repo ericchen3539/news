@@ -122,8 +122,8 @@
       </select>
       <label id="label-day" class="hidden">每月几号</label>
       <select id="schedule-day" class="hidden"></select>
-      <label>发送时间</label>
-      <input type="time" id="schedule-time" value="07:00">
+      <label>发送时间（24小时制）</label>
+      <input type="time" id="schedule-time" value="06:00">
       <label>时区</label>
       <select id="schedule-timezone"></select>
       <button id="btn-save-schedule">保存</button>
@@ -272,7 +272,7 @@
       });
 
       document.getElementById('schedule-frequency').value = schedule.frequency || 'daily';
-      document.getElementById('schedule-time').value = schedule.send_time || '07:00';
+      document.getElementById('schedule-time').value = schedule.send_time || '06:00';
       const tzSel = document.getElementById('schedule-timezone');
       const storedTz = schedule.timezone || getSystemTimezone();
       if (!schedule.hasSchedule || storedTz === getSystemTimezone()) {

@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS user_schedules (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
   frequency TEXT NOT NULL CHECK (frequency IN ('daily', 'weekly', 'biweekly', 'monthly')),
-  send_time TEXT NOT NULL DEFAULT '07:00',
+  send_time TEXT NOT NULL DEFAULT '06:00',
   timezone TEXT NOT NULL DEFAULT 'Asia/Shanghai',
   weekday INTEGER DEFAULT 1,
   day_of_month INTEGER DEFAULT 1,

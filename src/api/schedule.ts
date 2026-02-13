@@ -9,7 +9,7 @@ import { requireAuth } from "./middleware.js";
 
 const DEFAULT_SCHEDULE = {
   frequency: "daily",
-  send_time: "07:00",
+  send_time: "06:00",
   timezone: "Asia/Shanghai",
   weekday: 1,
   day_of_month: 1,

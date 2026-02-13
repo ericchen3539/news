@@ -74,7 +74,7 @@ async function getUsersToNotify(): Promise<UserToNotify[]> {
       [userId]
     );
     const frequency = (Array.isArray(scheduleRow) ? scheduleRow?.[0] : scheduleRow?.frequency) ?? "daily";
-    const sendTime = (Array.isArray(scheduleRow) ? scheduleRow?.[1] : scheduleRow?.send_time) ?? "07:00";
+    const sendTime = (Array.isArray(scheduleRow) ? scheduleRow?.[1] : scheduleRow?.send_time) ?? "06:00";
     const timezone = (Array.isArray(scheduleRow) ? scheduleRow?.[2] : scheduleRow?.timezone) ?? "Asia/Shanghai";
     const weekday = (Array.isArray(scheduleRow) ? scheduleRow?.[3] : scheduleRow?.weekday) ?? 1;
     const dayOfMonth = (Array.isArray(scheduleRow) ? scheduleRow?.[4] : scheduleRow?.day_of_month) ?? 1;
