@@ -44,12 +44,14 @@ authRouter.post("/verify-email", async (req, res) => {
   const { getDb, saveDb } = await import("../db/index.js");
   const { run, get } = await import("../db/query.js");
   const db = await getDb();
-  const row = get<[number]>(db, "SELECT id FROM users WHERE email = ?", [email.toLowerCase()]);
+  const row = await get<[number] | { id: number }>(db, "SELECT id FROM users WHERE email = ?", [email.toLowerCase()]);
   if (!row) {
     res.status(404).json({ error: "User not found" });
     return;
   }
-  run(db, "UPDATE users SET verified_at = unixepoch() WHERE id = ?", [row[0]]);
+  const userId = Array.isArray(row) ? row[0] : row.id;
+  const now = Math.floor(Date.now() / 1000);
+  await run(db, "UPDATE users SET verified_at = ? WHERE id = ?", [now, userId]);
   saveDb();
   res.json({ message: "Email verified (dev)" });
 });

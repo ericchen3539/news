@@ -13,7 +13,7 @@ filtersRouter.use(requireAuth);
 filtersRouter.get("/", async (req, res) => {
   const userId = req.userId!;
   const db = await getDb();
-  const row = get<[string, string]>(
+  const row = await get<[string, string] | { mode: string; categories_json: string }>(
     db,
     "SELECT mode, categories_json FROM user_filters WHERE user_id = ?",
     [userId]
@@ -22,9 +22,10 @@ filtersRouter.get("/", async (req, res) => {
     res.json({ mode: "include", categories: [] });
     return;
   }
-  const [mode, categories_json] = row;
+  const mode = Array.isArray(row) ? row[0] : row.mode;
+  const categories_json = Array.isArray(row) ? row[1] : row.categories_json;
   const categories = JSON.parse(categories_json ?? "[]") as string[];
-  res.json({ mode, categories });
+  res.json({ mode: mode as "include" | "exclude", categories });
 });
 
 filtersRouter.put("/", async (req, res) => {
@@ -36,7 +37,7 @@ filtersRouter.put("/", async (req, res) => {
   }
   const categoriesArr = Array.isArray(categories) ? categories : [];
   const db = await getDb();
-  run(
+  await run(
     db,
     `INSERT INTO user_filters (user_id, mode, categories_json) VALUES (?, ?, ?)
      ON CONFLICT(user_id) DO UPDATE SET mode = excluded.mode, categories_json = excluded.categories_json`,

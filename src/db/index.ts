@@ -1,49 +1,82 @@
 /**
- * Database layer using sql.js.
- * On Vercel: uses /tmp (ephemeral). For persistence, use Turso and set DATABASE_URL=libsql://...
+ * Database layer: Neon Postgres when DATABASE_URL is postgres(ql)://, else sql.js for local file.
  */
 
-import initSqlJs, { type Database } from "sql.js";
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "fs";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
-import { SCHEMA } from "./schema.js";
+const dbUrl = process.env.DATABASE_URL ?? "file:./data/news.db";
+const useNeon =
+  dbUrl.startsWith("postgres://") || dbUrl.startsWith("postgresql://");
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+let sqlNeon: ReturnType<typeof import("@neondatabase/serverless").neon> | null =
+  null;
 
-let db: Database | null = null;
+export async function getDb(): Promise<
+  | ReturnType<typeof import("@neondatabase/serverless").neon>
+  | import("sql.js").Database
+> {
+  if (useNeon) {
+    if (!sqlNeon) {
+      const { neon } = await import("@neondatabase/serverless");
+      sqlNeon = neon(dbUrl);
+      const { SCHEMA_PG } = await import("./schema-pg.js");
+      await sqlNeon.query(SCHEMA_PG);
+    }
+    return sqlNeon;
+  }
 
-const getDbPath = (): string => {
-  const url = process.env.DATABASE_URL ?? "file:./data/news.db";
-  if (process.env.VERCEL === "1") return "/tmp/news.db";
-  const match = url.match(/^file:(.+)$/);
-  return match ? join(process.cwd(), match[1]) : join(process.cwd(), "data", "news.db");
-};
+  const initSqlJs = (await import("sql.js")).default;
+  const { readFileSync, writeFileSync, mkdirSync, existsSync } = await import(
+    "fs"
+  );
+  const { dirname, join } = await import("path");
+  const { fileURLToPath } = await import("url");
+  const { SCHEMA } = await import("./schema.js");
 
-export async function getDb(): Promise<Database> {
-  if (db) return db;
+  const __dirname = dirname(fileURLToPath(import.meta.url));
+  let db = (globalThis as { __sqliteDb?: import("sql.js").Database }).__sqliteDb;
 
-  const SQL = await initSqlJs({
-    locateFile: (file: string) => join(__dirname, "../../node_modules/sql.js/dist", file),
-  });
+  if (!db) {
+    const SQL = await initSqlJs({
+      locateFile: (file: string) =>
+        join(__dirname, "../../node_modules/sql.js/dist", file),
+    });
 
-  const dbPath = getDbPath();
-  const dir = dirname(dbPath);
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+    const getDbPath = (): string => {
+      const match = dbUrl.match(/^file:(.+)$/);
+      const path = match ? match[1] : "./data/news.db";
+      return join(process.cwd(), path.startsWith("/") ? path.slice(1) : path);
+    };
 
-  if (existsSync(dbPath)) {
-    const buffer = readFileSync(dbPath);
-    db = new SQL.Database(buffer);
-  } else {
-    db = new SQL.Database();
-    db.run(SCHEMA);
+    const dbPath = getDbPath();
+    const dir = dirname(dbPath);
+    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+
+    if (existsSync(dbPath)) {
+      const buffer = readFileSync(dbPath);
+      db = new SQL.Database(buffer);
+    } else {
+      db = new SQL.Database();
+      db.run(SCHEMA);
+    }
+    (globalThis as { __sqliteDb?: import("sql.js").Database }).__sqliteDb = db;
   }
 
   return db;
 }
 
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+
 export function saveDb(): void {
-  if (!db) return;
+  const db = (globalThis as { __sqliteDb?: import("sql.js").Database }).__sqliteDb;
+  if (!db || useNeon) return;
+
+  const { writeFileSync, mkdirSync, existsSync } = require("fs");
+  const { dirname, join } = require("path");
+  const getDbPath = (): string => {
+    const match = dbUrl.match(/^file:(.+)$/);
+    const path = match ? match[1] : "./data/news.db";
+    return join(process.cwd(), path.startsWith("/") ? path.slice(1) : path);
+  };
   const dbPath = getDbPath();
   const dir = dirname(dbPath);
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
@@ -52,9 +85,15 @@ export function saveDb(): void {
 }
 
 export function closeDb(): void {
+  if (useNeon) {
+    sqlNeon = null;
+    return;
+  }
+  const db = (globalThis as { __sqliteDb?: import("sql.js").Database }).__sqliteDb;
   if (db) {
     saveDb();
     db.close();
-    db = null;
+    (globalThis as { __sqliteDb?: import("sql.js").Database }).__sqliteDb =
+      undefined;
   }
 }

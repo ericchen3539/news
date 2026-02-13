@@ -21,7 +21,15 @@ scheduleRouter.use(requireAuth);
 scheduleRouter.get("/", async (req, res) => {
   const userId = req.userId!;
   const db = await getDb();
-  const row = get<[string, string, string, number, number]>(
+  const row = await get<
+    [string, string, string, number, number] | {
+      frequency: string;
+      send_time: string;
+      timezone: string;
+      weekday: number;
+      day_of_month: number;
+    }
+  >(
     db,
     "SELECT frequency, send_time, timezone, weekday, day_of_month FROM user_schedules WHERE user_id = ?",
     [userId]
@@ -30,7 +38,11 @@ scheduleRouter.get("/", async (req, res) => {
     res.json(DEFAULT_SCHEDULE);
     return;
   }
-  const [frequency, send_time, timezone, weekday, day_of_month] = row;
+  const frequency = Array.isArray(row) ? row[0] : row.frequency;
+  const send_time = Array.isArray(row) ? row[1] : row.send_time;
+  const timezone = Array.isArray(row) ? row[2] : row.timezone;
+  const weekday = Array.isArray(row) ? row[3] : row.weekday;
+  const day_of_month = Array.isArray(row) ? row[4] : row.day_of_month;
   res.json({ frequency, send_time, timezone, weekday, day_of_month });
 });
 
@@ -49,7 +61,7 @@ scheduleRouter.put("/", async (req, res) => {
   const dom = typeof day_of_month === "number" ? day_of_month : DEFAULT_SCHEDULE.day_of_month;
 
   const db = await getDb();
-  run(
+  await run(
     db,
     `INSERT INTO user_schedules (user_id, frequency, send_time, timezone, weekday, day_of_month) VALUES (?, ?, ?, ?, ?, ?)
      ON CONFLICT(user_id) DO UPDATE SET frequency = excluded.frequency, send_time = excluded.send_time,

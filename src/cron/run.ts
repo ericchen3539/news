@@ -19,46 +19,65 @@ interface UserToNotify {
   categories: string[];
 }
 
+function rowToUser(r: [number, string] | { id: number; email: string }): [number, string] {
+  return Array.isArray(r) ? r : [r.id, r.email];
+}
+
+function rowToSource(r: [string, string] | { source_url: string; label: string }): [string, string] {
+  return Array.isArray(r) ? r : [r.source_url, r.label];
+}
+
 async function getUsersToNotify(): Promise<UserToNotify[]> {
   const db = await getDb();
 
-  const users = all<[number, string]>(
+  const users = await all<[number, string] | { id: number; email: string }>(
     db,
     "SELECT id, email FROM users WHERE verified_at IS NOT NULL"
   );
   const result: UserToNotify[] = [];
 
-  for (const [userId, email] of users) {
-    const sources = all<[string, string]>(
+  for (const userRow of users) {
+    const [userId, email] = rowToUser(userRow);
+    const sourcesRows = await all<[string, string] | { source_url: string; label: string }>(
       db,
       "SELECT source_url, label FROM user_sources WHERE user_id = ?",
       [userId]
     );
-    if (sources.length === 0) continue;
+    if (sourcesRows.length === 0) continue;
 
-    const filterRow = get<[string, string]>(
+    const filterRow = await get<[string, string] | { mode: string; categories_json: string }>(
       db,
       "SELECT mode, categories_json FROM user_filters WHERE user_id = ?",
       [userId]
     );
-    const mode = (filterRow?.[0] as "include" | "exclude") ?? "include";
+    const modeVal = Array.isArray(filterRow) ? filterRow?.[0] : filterRow?.mode;
+    const mode = (modeVal as "include" | "exclude") ?? "include";
     let categories: string[] = [];
     try {
-      categories = JSON.parse(filterRow?.[1] ?? "[]") ?? [];
+      const catJson = Array.isArray(filterRow) ? filterRow?.[1] : filterRow?.categories_json;
+      categories = JSON.parse(catJson ?? "[]") ?? [];
     } catch {
       // ignore
     }
 
-    const scheduleRow = get<[string, string, string, number, number]>(
+    const scheduleRow = await get<
+      [string, string, string, number, number] | {
+        frequency: string;
+        send_time: string;
+        timezone: string;
+        weekday: number;
+        day_of_month: number;
+      }
+    >(
       db,
       "SELECT frequency, send_time, timezone, weekday, day_of_month FROM user_schedules WHERE user_id = ?",
       [userId]
     );
-    const frequency = scheduleRow?.[0] ?? "daily";
-    const sendTime = scheduleRow?.[1] ?? "07:00";
-    const timezone = scheduleRow?.[2] ?? "Asia/Shanghai";
-    const weekday = scheduleRow?.[3] ?? 1;
-    const dayOfMonth = scheduleRow?.[4] ?? 1;
+    const frequency = (Array.isArray(scheduleRow) ? scheduleRow?.[0] : scheduleRow?.frequency) ?? "daily";
+    const sendTime = (Array.isArray(scheduleRow) ? scheduleRow?.[1] : scheduleRow?.send_time) ?? "07:00";
+    const timezone = (Array.isArray(scheduleRow) ? scheduleRow?.[2] : scheduleRow?.timezone) ?? "Asia/Shanghai";
+    const weekday = (Array.isArray(scheduleRow) ? scheduleRow?.[3] : scheduleRow?.weekday) ?? 1;
+    const dayOfMonth = (Array.isArray(scheduleRow) ? scheduleRow?.[4] : scheduleRow?.day_of_month) ?? 1;
 
     const [h, m] = sendTime.split(":").map(Number);
     const userDate = new Date(
@@ -87,7 +106,10 @@ async function getUsersToNotify(): Promise<UserToNotify[]> {
       result.push({
         userId,
         email,
-        sources: sources.map(([source_url, label]) => ({ source_url, label })),
+        sources: sourcesRows.map((r) => {
+          const [source_url, label] = rowToSource(r);
+          return { source_url, label };
+        }),
         mode,
         categories,
       });

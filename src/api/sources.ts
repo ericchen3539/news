@@ -4,7 +4,7 @@
 
 import { Router } from "express";
 import { getDb, saveDb } from "../db/index.js";
-import { run, get, all } from "../db/query.js";
+import { run, runReturning, all } from "../db/query.js";
 import { requireAuth } from "./middleware.js";
 
 export const sourcesRouter = Router();
@@ -13,13 +13,17 @@ sourcesRouter.use(requireAuth);
 sourcesRouter.get("/", async (req, res) => {
   const userId = req.userId!;
   const db = await getDb();
-  const rows = all<[number, string, string]>(
+  const rows = await all<[number, string, string] | { id: number; source_url: string; label: string }>(
     db,
     "SELECT id, source_url, label FROM user_sources WHERE user_id = ? ORDER BY id",
     [userId]
   );
   res.json(
-    rows.map(([id, source_url, label]) => ({ id, source_url, label }))
+    rows.map((r) =>
+      Array.isArray(r)
+        ? { id: r[0], source_url: r[1], label: r[2] }
+        : { id: r.id, source_url: r.source_url, label: r.label }
+    )
   );
 });
 
@@ -40,14 +44,14 @@ sourcesRouter.post("/", async (req, res) => {
       }
     })();
   const db = await getDb();
-  run(db, "INSERT INTO user_sources (user_id, source_url, label) VALUES (?, ?, ?)", [
-    userId,
-    source_url.trim(),
-    displayLabel,
-  ]);
+  const row = await runReturning<[number] | { id: number }>(
+    db,
+    "INSERT INTO user_sources (user_id, source_url, label) VALUES (?, ?, ?) RETURNING id",
+    [userId, source_url.trim(), displayLabel]
+  );
+  const id = Array.isArray(row) ? row?.[0] : row?.id;
   saveDb();
-  const row = get<[number]>(db, "SELECT last_insert_rowid()");
-  res.status(201).json({ id: row?.[0], source_url: source_url.trim(), label: displayLabel });
+  res.status(201).json({ id, source_url: source_url.trim(), label: displayLabel });
 });
 
 sourcesRouter.delete("/:id", async (req, res) => {
@@ -58,7 +62,7 @@ sourcesRouter.delete("/:id", async (req, res) => {
     return;
   }
   const db = await getDb();
-  run(db, "DELETE FROM user_sources WHERE id = ? AND user_id = ?", [id, userId]);
+  await run(db, "DELETE FROM user_sources WHERE id = ? AND user_id = ?", [id, userId]);
   saveDb();
   res.json({ deleted: true });
 });

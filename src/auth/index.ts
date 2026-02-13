@@ -6,7 +6,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { randomBytes } from "crypto";
 import { getDb, saveDb } from "../db/index.js";
-import { run, get, all } from "../db/query.js";
+import { run, get, runReturning } from "../db/query.js";
 import { sendVerificationEmail } from "../email/send.js";
 
 const SALT_ROUNDS = 10;
@@ -19,7 +19,7 @@ export async function register(
 ): Promise<{ ok: boolean; error?: string }> {
   const db = await getDb();
 
-  const existing = get<[number]>(db, "SELECT id FROM users WHERE email = ?", [
+  const existing = await get<[number] | { id: number }>(db, "SELECT id FROM users WHERE email = ?", [
     email.toLowerCase(),
   ]);
   if (existing) {
@@ -27,18 +27,17 @@ export async function register(
   }
 
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
-  run(db, "INSERT INTO users (email, password_hash) VALUES (?, ?)", [
-    email.toLowerCase(),
-    passwordHash,
-  ]);
+  const insertRow = await runReturning<[number] | { id: number }>(
+    db,
+    "INSERT INTO users (email, password_hash) VALUES (?, ?) RETURNING id",
+    [email.toLowerCase(), passwordHash]
+  );
+  const userId = Array.isArray(insertRow) ? insertRow[0] : insertRow?.id ?? 0;
   saveDb();
-
-  const row = get<[number]>(db, "SELECT last_insert_rowid() as id");
-  const userId = row?.[0] ?? 0;
 
   const token = randomBytes(32).toString("hex");
   const expiresAt = Math.floor(Date.now() / 1000) + TOKEN_EXPIRY_HOURS * 3600;
-  run(db, "INSERT INTO verification_tokens (user_id, token, expires_at) VALUES (?, ?, ?)", [
+  await run(db, "INSERT INTO verification_tokens (user_id, token, expires_at) VALUES (?, ?, ?)", [
     userId,
     token,
     expiresAt,
@@ -50,8 +49,9 @@ export async function register(
   await sendVerificationEmail(email, verifyUrl);
 
   if (process.env.DEV_VERIFY_EMAIL === "1") {
-    run(db, "UPDATE users SET verified_at = unixepoch() WHERE id = ?", [userId]);
-    run(db, "DELETE FROM verification_tokens WHERE token = ?", [token]);
+    const now = Math.floor(Date.now() / 1000);
+    await run(db, "UPDATE users SET verified_at = ? WHERE id = ?", [now, userId]);
+    await run(db, "DELETE FROM verification_tokens WHERE token = ?", [token]);
     saveDb();
   }
 
@@ -61,7 +61,7 @@ export async function register(
 export async function verifyEmail(token: string): Promise<{ ok: boolean; error?: string }> {
   const db = await getDb();
 
-  const row = get<[number, number]>(
+  const row = await get<[number, number] | { user_id: number; expires_at: number }>(
     db,
     "SELECT user_id, expires_at FROM verification_tokens WHERE token = ?",
     [token]
@@ -70,15 +70,17 @@ export async function verifyEmail(token: string): Promise<{ ok: boolean; error?:
     return { ok: false, error: "Invalid or expired token" };
   }
 
-  const [userId, expiresAt] = row;
+  const userId = Array.isArray(row) ? row[0] : row.user_id;
+  const expiresAt = Array.isArray(row) ? row[1] : row.expires_at;
   if (expiresAt < Math.floor(Date.now() / 1000)) {
-    run(db, "DELETE FROM verification_tokens WHERE token = ?", [token]);
+    await run(db, "DELETE FROM verification_tokens WHERE token = ?", [token]);
     saveDb();
     return { ok: false, error: "Token expired" };
   }
 
-  run(db, "UPDATE users SET verified_at = unixepoch() WHERE id = ?", [userId]);
-  run(db, "DELETE FROM verification_tokens WHERE token = ?", [token]);
+  const now = Math.floor(Date.now() / 1000);
+  await run(db, "UPDATE users SET verified_at = ? WHERE id = ?", [now, userId]);
+  await run(db, "DELETE FROM verification_tokens WHERE token = ?", [token]);
   saveDb();
 
   return { ok: true };
@@ -90,7 +92,7 @@ export async function login(
 ): Promise<{ ok: boolean; token?: string; error?: string }> {
   const db = await getDb();
 
-  const row = get<[number, string, number | null]>(
+  const row = await get<[number, string, number | null] | { id: number; password_hash: string; verified_at: number | null }>(
     db,
     "SELECT id, password_hash, verified_at FROM users WHERE email = ?",
     [email.toLowerCase()]
@@ -99,7 +101,9 @@ export async function login(
     return { ok: false, error: "Invalid email or password" };
   }
 
-  const [id, passwordHash, verifiedAt] = row;
+  const id = Array.isArray(row) ? row[0] : row.id;
+  const passwordHash = Array.isArray(row) ? row[1] : row.password_hash;
+  const verifiedAt = Array.isArray(row) ? row[2] : row.verified_at;
   const match = await bcrypt.compare(password, passwordHash);
   if (!match) return { ok: false, error: "Invalid email or password" };
 
