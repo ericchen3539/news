@@ -5,11 +5,10 @@
 
 import express from "express";
 import cors from "cors";
-import { join, dirname } from "path";
-import { fileURLToPath } from "url";
+import { join } from "path";
 import { apiRouter } from "./api/router.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+const publicDir = join(process.cwd(), "public");
 
 const app = express();
 app.use(cors());
@@ -21,11 +20,12 @@ app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
 });
 
+app.use(express.static(publicDir));
+app.get("/verify", (_req, res) => {
+  res.sendFile(join(publicDir, "verify.html"));
+});
+
 if (process.env.VERCEL !== "1") {
-  app.use(express.static(join(__dirname, "../public")));
-  app.get("/verify", (_req, res) => {
-    res.sendFile(join(__dirname, "../public/verify.html"));
-  });
   const PORT = process.env.PORT ?? 3000;
   app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
