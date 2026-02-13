@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>验证邮箱 - News Digest</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 480px; margin: 48px auto; padding: 24px; text-align: center; }
+    .success { color: #080; }
+    .error { color: #c00; }
+    a { color: #06c; }
+  </style>
+</head>
+<body>
+  <div id="result">验证中...</div>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const token = params.get('token');
+    if (!token) {
+      document.getElementById('result').innerHTML = '<p class="error">缺少验证链接</p>';
+    } else {
+      fetch('/api/auth/verify?token=' + encodeURIComponent(token))
+        .then(r => r.json())
+        .then(data => {
+          const el = document.getElementById('result');
+          if (data.error) {
+            el.innerHTML = '<p class="error">' + data.error + '</p>';
+          } else {
+            el.innerHTML = '<p class="success">邮箱验证成功！</p><p><a href="/">前往配置</a></p>';
+          }
+        })
+        .catch(() => {
+          document.getElementById('result').innerHTML = '<p class="error">验证请求失败</p>';
+        });
+    }
+  </script>
+</body>
+</html>

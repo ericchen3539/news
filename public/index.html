@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>News Digest - 新闻摘要</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 0 auto; padding: 24px; }
+    h1 { font-size: 1.5rem; }
+    section { margin: 24px 0; padding: 16px; border: 1px solid #ddd; border-radius: 8px; }
+    label { display: block; margin: 8px 0 4px; font-weight: 500; }
+    input, select, button { padding: 8px 12px; font-size: 1rem; }
+    input[type="url"], input[type="email"], input[type="password"] { width: 100%; }
+    button { cursor: pointer; background: #333; color: #fff; border: none; border-radius: 4px; }
+    button:hover { background: #555; }
+    .error { color: #c00; margin-top: 8px; }
+    .success { color: #080; margin-top: 8px; }
+    .hidden { display: none; }
+    .checkbox-group { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+    .checkbox-group label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+    .row { display: flex; gap: 8px; align-items: flex-end; margin: 8px 0; }
+    .section-hint { color: #666; font-size: 0.9em; margin: -8px 0 12px; }
+    .source-form { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+    .source-form label { margin: 0; }
+    .source-form input { width: 100%; }
+    .source-summary { font-size: 0.9em; color: #666; margin-bottom: 12px; }
+    .row input { flex: 1; }
+    .source-list { list-style: none; padding: 0; margin: 0; }
+    .source-list { border: 1px solid #ddd; border-radius: 4px; }
+    .source-list li { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid #eee; }
+    .source-list li:last-child { border-bottom: none; }
+    .source-list li span { flex: 1; overflow: hidden; min-width: 0; }
+    .source-item { display: flex; flex-direction: column; gap: 2px; }
+    .source-item small { color: #666; font-size: 0.85em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    nav { margin-bottom: 24px; }
+    nav a { margin-right: 16px; }
+    .link-btn { background:none; border:none; color:#06c; text-decoration:underline; cursor:pointer; padding:0; font-size:inherit; }
+  </style>
+</head>
+<body>
+  <h1>News Digest - 新闻摘要</h1>
+  <nav>
+    <a href="#" data-page="register">注册</a>
+    <a href="#" data-page="login">登录</a>
+    <a href="#" data-page="config" class="hidden" id="nav-config">配置</a>
+    <a href="#" data-page="logout" class="hidden" id="nav-logout">退出</a>
+  </nav>
+
+  <div id="page-register" class="page">
+    <section>
+      <h2>注册</h2>
+      <label>邮箱</label>
+      <input type="email" id="reg-email" placeholder="your@email.com">
+      <label>密码</label>
+      <input type="password" id="reg-password" placeholder="至少6位">
+      <button id="btn-register">注册</button>
+      <div id="reg-msg" class="error hidden"></div>
+    </section>
+  </div>
+
+  <div id="page-login" class="page">
+    <section>
+      <h2>登录</h2>
+      <label>邮箱</label>
+      <input type="email" id="login-email" placeholder="your@email.com">
+      <label>密码</label>
+      <input type="password" id="login-password">
+      <button id="btn-login">登录</button>
+      <div id="login-msg" class="error hidden"></div>
+      <p class="verify-hint hidden" id="verify-hint" style="margin-top:12px;font-size:0.9em;">
+        未收到验证邮件？<button type="button" id="btn-manual-verify" class="link-btn">点击此处手动验证</button>
+      </p>
+    </section>
+  </div>
+
+  <div id="page-config" class="page hidden">
+    <section>
+      <h2>新闻源</h2>
+      <p class="section-hint">可添加多个新闻网站，逐一添加后点击「添加此源」。</p>
+      <div class="source-form">
+        <label>网站地址</label>
+        <input type="url" id="source-url" placeholder="如 https://news.google.com/rss 或 https://rss.nytimes.com/services/xml/rss/nyt/World.xml">
+        <label>新闻板块（选填）</label>
+        <input type="text" id="source-label" placeholder="不填则收录该站全部新闻。填则仅收录该板块，如：World、科技">
+        <button id="btn-add-source">添加此源</button>
+      </div>
+      <div class="source-summary" id="source-summary"></div>
+      <ul class="source-list" id="source-list"></ul>
+    </section>
+    <section>
+      <h2>过滤条件</h2>
+      <label>模式</label>
+      <select id="filter-mode">
+        <option value="include">包含（匹配以下类别则保留）</option>
+        <option value="exclude">排除（匹配以下类别则剔除）</option>
+      </select>
+      <label>预设类别（多选）</label>
+      <div class="checkbox-group" id="filter-categories"></div>
+      <button id="btn-save-filters">保存</button>
+      <div id="filter-msg" class="hidden"></div>
+    </section>
+    <section>
+      <h2>发送频率与时间</h2>
+      <label>频率</label>
+      <select id="schedule-frequency">
+        <option value="daily">每天</option>
+        <option value="weekly">每周</option>
+        <option value="biweekly">每两周</option>
+        <option value="monthly">每月</option>
+      </select>
+      <label id="label-weekday">星期几</label>
+      <select id="schedule-weekday" class="hidden">
+        <option value="0">周日</option>
+        <option value="1" selected>周一</option>
+        <option value="2">周二</option>
+        <option value="3">周三</option>
+        <option value="4">周四</option>
+        <option value="5">周五</option>
+        <option value="6">周六</option>
+      </select>
+      <label id="label-day" class="hidden">每月几号</label>
+      <select id="schedule-day" class="hidden"></select>
+      <label>发送时间</label>
+      <input type="time" id="schedule-time" value="07:00">
+      <label>时区</label>
+      <input type="text" id="schedule-timezone" value="Asia/Shanghai" placeholder="Asia/Shanghai">
+      <button id="btn-save-schedule">保存</button>
+      <div id="schedule-msg" class="hidden"></div>
+    </section>
+  </div>
+
+  <script>
+    const API = '/api';
+    let token = localStorage.getItem('token');
+    function escapeHtml(s) { const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+    function showPage(name) {
+      document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+      const el = document.getElementById('page-' + name);
+      if (el) el.classList.remove('hidden');
+      document.getElementById('nav-config').classList.toggle('hidden', !token);
+      document.getElementById('nav-logout').classList.toggle('hidden', !token);
+      if (name === 'config' && token) loadConfig();
+    }
+
+    document.querySelectorAll('[data-page]').forEach(a => {
+      a.addEventListener('click', e => {
+        e.preventDefault();
+        const page = a.dataset.page;
+        if (page === 'logout') { localStorage.removeItem('token'); token = null; showPage('login'); return; }
+        showPage(page);
+      });
+    });
+
+    async function api(path, opts = {}) {
+      const headers = { 'Content-Type': 'application/json', ...opts.headers };
+      if (token) headers['Authorization'] = 'Bearer ' + token;
+      const res = await fetch(API + path, { ...opts, headers });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || res.statusText);
+      return data;
+    }
+
+    document.getElementById('btn-register').addEventListener('click', async () => {
+      const email = document.getElementById('reg-email').value.trim();
+      const password = document.getElementById('reg-password').value;
+      const msg = document.getElementById('reg-msg');
+      msg.className = 'error hidden';
+      if (!email || !password) { msg.textContent = '请填写邮箱和密码'; msg.classList.remove('hidden'); return; }
+      try {
+        await api('/auth/register', { method: 'POST', body: JSON.stringify({ email, password }) });
+        msg.className = 'success'; msg.textContent = '注册成功，请查收邮件验证。'; msg.classList.remove('hidden');
+      } catch (e) { msg.textContent = e.message; msg.classList.remove('hidden'); }
+    });
+
+    document.getElementById('btn-login').addEventListener('click', async () => {
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+      const msg = document.getElementById('login-msg');
+      const hint = document.getElementById('verify-hint');
+      msg.className = 'error hidden';
+      hint.classList.add('hidden');
+      try {
+        const { token: t } = await api('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
+        token = t; localStorage.setItem('token', t);
+        showPage('config');
+      } catch (e) {
+        msg.textContent = e.message; msg.classList.remove('hidden');
+        if (e.message.includes('Email not verified') && email) hint.classList.remove('hidden');
+      }
+    });
+
+    document.getElementById('btn-manual-verify').addEventListener('click', async () => {
+      const email = document.getElementById('login-email').value.trim();
+      const msg = document.getElementById('login-msg');
+      const hint = document.getElementById('verify-hint');
+      if (!email) { msg.textContent = '请先输入邮箱'; msg.classList.remove('hidden'); return; }
+      try {
+        await api('/auth/verify-email', { method: 'POST', body: JSON.stringify({ email }) });
+        msg.className = 'success'; msg.textContent = '已验证，请重新登录。'; msg.classList.remove('hidden');
+        hint.classList.add('hidden');
+      } catch (e) { msg.textContent = e.message; msg.classList.remove('hidden'); }
+    });
+
+    async function loadFilterPresets() {
+      const presets = await api('/filter-presets');
+      const div = document.getElementById('filter-categories');
+      div.innerHTML = presets.map(p => `
+        <label><input type="checkbox" value="${p.id}"> ${p.label}</label>
+      `).join('');
+    }
+
+    async function loadConfig() {
+      const [sources, filters, schedule] = await Promise.all([
+        api('/sources'),
+        api('/filters'),
+        api('/schedule')
+      ]);
+
+      const summary = document.getElementById('source-summary');
+      summary.textContent = sources.length ? `已添加 ${sources.length} 个新闻源：` : '暂无新闻源，请在上方添加。';
+
+      const list = document.getElementById('source-list');
+      list.innerHTML = sources.map(s => `
+        <li>
+          <span class="source-item"><strong>${escapeHtml(s.source_url)}</strong><small>${escapeHtml(s.label)}</small></span>
+          <button data-id="${s.id}" class="btn-del">删除</button>
+        </li>
+      `).join('');
+      list.querySelectorAll('.btn-del').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          await api('/sources/' + btn.dataset.id, { method: 'DELETE' });
+          loadConfig();
+        });
+      });
+
+      document.getElementById('filter-mode').value = filters.mode || 'include';
+      await loadFilterPresets();
+      (filters.categories || []).forEach(id => {
+        const cb = document.querySelector(`#filter-categories input[value="${id}"]`);
+        if (cb) cb.checked = true;
+      });
+
+      document.getElementById('schedule-frequency').value = schedule.frequency || 'daily';
+      document.getElementById('schedule-time').value = schedule.send_time || '07:00';
+      document.getElementById('schedule-timezone').value = schedule.timezone || 'Asia/Shanghai';
+      document.getElementById('schedule-weekday').value = String(schedule.weekday ?? 1);
+      document.getElementById('schedule-day').value = String(schedule.day_of_month ?? 1);
+
+      const freq = document.getElementById('schedule-frequency').value;
+      document.getElementById('schedule-weekday').classList.toggle('hidden', !['weekly','biweekly'].includes(freq));
+      document.getElementById('label-weekday').classList.toggle('hidden', !['weekly','biweekly'].includes(freq));
+      document.getElementById('schedule-day').classList.toggle('hidden', freq !== 'monthly');
+      document.getElementById('label-day').classList.toggle('hidden', freq !== 'monthly');
+    }
+
+    document.getElementById('schedule-frequency').addEventListener('change', () => {
+      const freq = document.getElementById('schedule-frequency').value;
+      document.getElementById('schedule-weekday').classList.toggle('hidden', !['weekly','biweekly'].includes(freq));
+      document.getElementById('label-weekday').classList.toggle('hidden', !['weekly','biweekly'].includes(freq));
+      document.getElementById('schedule-day').classList.toggle('hidden', freq !== 'monthly');
+      document.getElementById('label-day').classList.toggle('hidden', freq !== 'monthly');
+    });
+
+    const daySelect = document.getElementById('schedule-day');
+    for (let i = 1; i <= 31; i++) daySelect.innerHTML += `<option value="${i}">${i}日</option>`;
+
+    document.getElementById('btn-add-source').addEventListener('click', async () => {
+      const url = document.getElementById('source-url').value.trim();
+      const label = document.getElementById('source-label').value.trim();
+      if (!url) return;
+      try {
+        await api('/sources', { method: 'POST', body: JSON.stringify({ source_url: url, label: label || undefined }) });
+        document.getElementById('source-url').value = '';
+        document.getElementById('source-label').value = '';
+        loadConfig();
+      } catch (e) { alert(e.message); }
+    });
+
+    document.getElementById('btn-save-filters').addEventListener('click', async () => {
+      const mode = document.getElementById('filter-mode').value;
+      const categories = [...document.querySelectorAll('#filter-categories input:checked')].map(cb => cb.value);
+      await api('/filters', { method: 'PUT', body: JSON.stringify({ mode, categories }) });
+      const msg = document.getElementById('filter-msg');
+      msg.className = 'success'; msg.textContent = '已保存'; msg.classList.remove('hidden');
+      setTimeout(() => msg.classList.add('hidden'), 2000);
+    });
+
+    document.getElementById('btn-save-schedule').addEventListener('click', async () => {
+      const frequency = document.getElementById('schedule-frequency').value;
+      const send_time = document.getElementById('schedule-time').value;
+      const timezone = document.getElementById('schedule-timezone').value.trim();
+      const weekday = parseInt(document.getElementById('schedule-weekday').value, 10);
+      const day_of_month = parseInt(document.getElementById('schedule-day').value, 10);
+      await api('/schedule', { method: 'PUT', body: JSON.stringify({ frequency, send_time, timezone, weekday, day_of_month }) });
+      const msg = document.getElementById('schedule-msg');
+      msg.className = 'success'; msg.textContent = '已保存'; msg.classList.remove('hidden');
+      setTimeout(() => msg.classList.add('hidden'), 2000);
+    });
+
+    showPage(token ? 'config' : 'register');
+  </script>
+</body>
+</html>
