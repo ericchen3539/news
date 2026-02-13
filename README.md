@@ -14,8 +14,17 @@
 ## 部署到 Vercel
 
 1. 在 [Vercel](https://vercel.com) 导入 GitHub 仓库 `ericchen3539/news`
-2. 在项目设置中添加环境变量：`JWT_SECRET`、`SMTP_*`、`APP_URL`（部署后的域名）
-3. **数据库**：Vercel 为无状态环境，需使用 [Turso](https://turso.tech) 等外部数据库。在 Turso 创建库后，设置 `DATABASE_URL`（libsql://...）和 `DATABASE_AUTH_TOKEN`
+2. 在项目设置中添加环境变量：
+
+   | 变量 | 说明 |
+   |------|------|
+   | `DATABASE_URL` | **必须**。使用 [Neon](https://neon.tech) Postgres：`postgresql://user:pass@host/dbname?sslmode=require` |
+   | `JWT_SECRET` | 生产环境密钥（可用 `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"` 生成） |
+   | `APP_URL` | 部署后的域名，如 `https://xxx.vercel.app` |
+   | `SMTP_HOST` | 未配置真实 SMTP 时设为 `skip` |
+   | `SMTP_*` | 使用真实 SMTP 时配置 `SMTP_HOST`、`SMTP_PORT`、`SMTP_USER`、`SMTP_PASS` |
+
+3. **数据库**：Vercel 为无状态环境，需使用 [Neon](https://neon.tech) Postgres。在 Neon 创建项目后，复制连接字符串到 `DATABASE_URL`。首次部署会自动执行 schema。
 4. 推送代码后自动部署
 
 本地 `vercel deploy` 需先执行 `vercel link` 关联项目。

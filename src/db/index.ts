@@ -13,6 +13,11 @@ export async function getDb(): Promise<
   | ReturnType<typeof import("@neondatabase/serverless").neon>
   | import("sql.js").Database
 > {
+  if (process.env.VERCEL === "1" && !useNeon) {
+    throw new Error(
+      "Vercel requires DATABASE_URL with postgresql://. Set it in Vercel project settings."
+    );
+  }
   if (useNeon) {
     if (!sqlNeon) {
       const { neon } = await import("@neondatabase/serverless");

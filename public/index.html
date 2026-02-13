@@ -179,7 +179,7 @@
       btn.disabled = true;
       btn.textContent = '注册中...';
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      const timeoutId = setTimeout(() => controller.abort(), 45000);
       try {
         await api('/auth/register', {
           method: 'POST',
