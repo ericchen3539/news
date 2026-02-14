@@ -43,7 +43,9 @@
     #email-content-modal { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px; }
     #email-content-modal.hidden { display: none; }
     #email-content-modal .modal-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.4); cursor: pointer; }
-    #email-content-modal .modal-box { position: relative; max-width: 720px; width: 100%; max-height: 90vh; display: flex; flex-direction: column; background: #f8f6f1; border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.2); overflow: hidden; }
+    #email-content-modal .modal-box { position: relative; max-width: min(960px, 95vw); width: 100%; max-height: 90vh; display: flex; flex-direction: column; background: #f8f6f1; border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.2); overflow: hidden; }
+    #email-content-modal .modal-box.fullscreen { max-width: none; width: 100%; height: 100%; max-height: none; border-radius: 0; }
+    #email-content-modal.fullscreen { padding: 0; }
     #email-content-modal .modal-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 16px 20px; background: #fff; border-bottom: 1px solid #ddd; flex-shrink: 0; }
     #email-content-modal .modal-header-info { flex: 1; min-width: 0; }
     #email-content-modal .modal-header h3 { margin: 0 0 4px; font-size: 1.1rem; color: #1a3a52; }
@@ -52,7 +54,9 @@
     #email-content-modal .modal-btn { width: 32px; height: 32px; padding: 0; font-size: 1.1rem; line-height: 1; background: transparent; color: #666; border: none; cursor: pointer; border-radius: 4px; }
     #email-content-modal .modal-btn:hover { background: #eee; color: #333; }
     #email-content-modal .modal-body { flex: 1; overflow: auto; padding: 20px; font-size: 1.05rem; line-height: 1.65; color: #333; max-width: 65ch; margin: 0 auto; width: 100%; }
-    #email-content-modal .modal-body table { max-width: 100%; }
+    #email-content-modal .modal-body:has(table) { max-width: none; }
+    #email-content-modal .modal-box.fullscreen .modal-body { max-width: none; }
+    #email-content-modal .modal-body table { max-width: 100%; table-layout: fixed; }
     #email-content-modal .modal-pagination { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 12px 20px; background: #fff; border-top: 1px solid #ddd; flex-shrink: 0; }
     #email-content-modal .modal-pagination.hidden { display: none; }
     #email-content-modal .modal-pagination button { padding: 6px 12px; font-size: 0.9rem; }
@@ -382,9 +386,13 @@
             else closeEmailModal();
           }
         }
+        const modalBox = modalEl.querySelector('.modal-box');
         function updateFullscreenBtn() {
-          fullscreenBtn.textContent = document.fullscreenElement === modalEl ? '✕' : '⛶';
-          fullscreenBtn.title = document.fullscreenElement === modalEl ? '退出全屏' : '全屏';
+          const isFullscreen = document.fullscreenElement === modalEl;
+          fullscreenBtn.textContent = isFullscreen ? '✕' : '⛶';
+          fullscreenBtn.title = isFullscreen ? '退出全屏' : '全屏';
+          modalEl.classList.toggle('fullscreen', isFullscreen);
+          modalBox.classList.toggle('fullscreen', isFullscreen);
         }
         fullscreenBtn.onclick = () => {
           if (document.fullscreenElement === modalEl) document.exitFullscreen?.();
@@ -405,7 +413,7 @@
           const end = start + PAGE_SIZE;
           const rows = paginatedRows.slice(start, end);
           const parser = document.createElement('div');
-          parser.innerHTML = paginatedRows.length ? '<table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse;width:100%;"><thead><tr style="background:#f0f0f0;"><th>标题</th><th>摘要</th><th>来源</th></tr></thead><tbody></tbody></table>' : '';
+          parser.innerHTML = paginatedRows.length ? '<table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse;width:100%;table-layout:fixed;"><colgroup><col style="width:28%"><col style="width:52%"><col style="width:20%"></colgroup><thead><tr style="background:#f0f0f0;"><th>标题</th><th>摘要</th><th>来源</th></tr></thead><tbody></tbody></table>' : '';
           const tbody = parser.querySelector('tbody');
           rows.forEach((tr) => tbody.appendChild(tr.cloneNode(true)));
           bodyEl.innerHTML = parser.innerHTML;
