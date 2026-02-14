@@ -70,7 +70,6 @@
     .digest-card-title-zh { margin: 0 0 8px; font-size: 0.9em; color: #555; line-height: 1.4; }
     .digest-card-meta { margin: 0; font-size: 0.9em; color: #666; line-height: 1.5; }
     .digest-card-source { display: inline-block; margin-right: 8px; font-weight: 500; color: #666; }
-    .digest-card-summary { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     #email-content-modal .modal-body:has(.digest-card) { max-width: none; }
   </style>
 </head>
@@ -411,7 +410,7 @@
           else modalEl.requestFullscreen?.();
         };
         modalEl.addEventListener('fullscreenchange', updateFullscreenBtn);
-        const PAGE_SIZE = 10;
+        const PAGE_SIZE = 5;
         let paginatedRows = [];
         let currentPage = 1;
         const bodyEl = document.getElementById('email-modal-body');
