@@ -39,6 +39,9 @@
     nav { margin-bottom: 24px; }
     nav a { margin-right: 16px; }
     .link-btn { background:none; border:none; color:#06c; text-decoration:underline; cursor:pointer; padding:0; font-size:inherit; }
+    .op-sep { margin: 0 0.75em; color: #999; font-weight: normal; }
+    .link-btn-danger { color: #c00; font-weight: 600; }
+    .link-btn-danger:hover { color: #e00; }
     .btn-quick-add { padding:6px 12px; font-size:0.9em; margin:2px; }
     #email-content-modal { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px; }
     #email-content-modal.hidden { display: none; }
@@ -356,7 +359,7 @@
         }
         tbody.innerHTML = emails.map((e, i) => {
           const hasContent = e.content && e.content.trim();
-          const actions = (hasContent ? `<button type="button" class="link-btn btn-view-content" data-idx="${i}">查看内容</button> ` : '') + `<button type="button" class="link-btn btn-delete-email" data-id="${e.id}">删除</button>`;
+          const actions = (hasContent ? `<button type="button" class="link-btn btn-view-content" data-idx="${i}">查看内容</button><span class="op-sep">|</span>` : '') + `<button type="button" class="link-btn link-btn-danger btn-delete-email" data-id="${e.id}">删除</button>`;
           return `<tr><td style="padding:8px; border-bottom:1px solid #eee;"><input type="checkbox" class="email-row-check" data-id="${e.id}"></td><td style="padding:8px; border-bottom:1px solid #eee;">${escapeHtml(e.subject)}</td><td style="padding:8px; border-bottom:1px solid #eee;">${formatSentAt(e.sent_at)}</td><td style="padding:8px; border-bottom:1px solid #eee;">${actions}</td></tr>`;
         }).join('');
         selectAllTh.checked = false;
