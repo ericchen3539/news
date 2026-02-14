@@ -119,4 +119,24 @@ describe("filterNews", () => {
     expect(result).toHaveLength(1);
     expect(result[0].title).toBe("Congress passes new legislation on immigration");
   });
+
+  it("include mode: excludes game news matching God of War / 战神", () => {
+    const items = [
+      makeItem("God of War Sons of Sparta Co-Op Confusion on PlayStation Store", "战神斯巴达之子. Game news."),
+      makeItem("War in the region continues as tensions rise"),
+    ];
+    const result = filterNews(items, "include", ["politics"]);
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe("War in the region continues as tensions rise");
+  });
+
+  it("include mode: excludes aurora/weather news even when matching politics keywords", () => {
+    const items = [
+      makeItem("Valentine's Day Aurora Alert: 12 States On Watch For Northern Lights", "State capital cities. 情人节极光警报北极光."),
+      makeItem("Capital city prepares for summit meeting"),
+    ];
+    const result = filterNews(items, "include", ["politics"]);
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe("Capital city prepares for summit meeting");
+  });
 });

@@ -104,6 +104,8 @@ const TEXT_FALSE_POSITIVES = [
   "presidents' day",
   "presidents day",
   "总统日",
+  "god of war",
+  "战神",
 ];
 
 export function stripSourceFalsePositives(text: string): string {
@@ -149,6 +151,13 @@ export const COMMERCIAL_KEYWORDS = [
   "辫子",
   "chemicals",
   "化学物质",
+  "游戏",
+  "playstation",
+  "ps5",
+  "aurora",
+  "northern lights",
+  "极光",
+  "北极光",
 ];
 
 export function expandCategories(categoryIds: string[]): string[] {
