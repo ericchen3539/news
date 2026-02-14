@@ -69,4 +69,14 @@ describe("filterNews", () => {
     expect(filterNews(items, "include", ["unknown-id"])).toEqual(items);
     expect(filterNews(items, "exclude", ["unknown-id"])).toEqual(items);
   });
+
+  it("include mode: excludes items matching commercial keywords even when category matches", () => {
+    const items = [
+      makeItem("Apple 总统日促销: Apple Watch 仅需 299 美元"),
+      makeItem("President Biden signs new legislation"),
+    ];
+    const result = filterNews(items, "include", ["politics"]);
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe("President Biden signs new legislation");
+  });
 });

@@ -1,8 +1,9 @@
 /**
  * Filter engine: applies user filter rules (include/exclude by preset categories) to news items.
+ * In include mode, items matching commercial keywords (ads, promotions) are excluded.
  */
 
-import { expandCategories } from "./presets.js";
+import { expandCategories, COMMERCIAL_KEYWORDS } from "./presets.js";
 
 export interface NewsItem {
   title: string;
@@ -22,8 +23,14 @@ export function filterNews(
   const text = (item: NewsItem) =>
     `${(item.title ?? "").toLowerCase()} ${(item.summary ?? "").toLowerCase()}`;
 
+  const hasCommercialMatch = (item: NewsItem) =>
+    COMMERCIAL_KEYWORDS.some((kw) => text(item).includes(kw.toLowerCase()));
+
   return items.filter((item) => {
     const hasMatch = keywords.some((kw) => text(item).includes(kw.toLowerCase()));
-    return mode === "include" ? hasMatch : !hasMatch;
+    if (mode === "include") {
+      return hasMatch && !hasCommercialMatch(item);
+    }
+    return !hasMatch;
   });
 }

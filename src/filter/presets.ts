@@ -93,6 +93,28 @@ export function getFilterPresetsList(): { id: string; label: string }[] {
   return Object.entries(FILTER_PRESETS).map(([id, { label }]) => ({ id, label }));
 }
 
+/** Keywords indicating commercial/promotional content. Items matching these are excluded even if they match category keywords. */
+export const COMMERCIAL_KEYWORDS = [
+  "促销",
+  "优惠",
+  "折扣",
+  "deal",
+  "deals",
+  "sale",
+  "sales",
+  "广告",
+  "promotion",
+  "promo",
+  "discount",
+  "save",
+  "savings",
+  "bargain",
+  "coupon",
+  "特惠",
+  "降价",
+  "打折",
+];
+
 export function expandCategories(categoryIds: string[]): string[] {
   const keywords = new Set<string>();
   for (const id of categoryIds) {
