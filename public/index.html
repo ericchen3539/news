@@ -40,6 +40,18 @@
     nav a { margin-right: 16px; }
     .link-btn { background:none; border:none; color:#06c; text-decoration:underline; cursor:pointer; padding:0; font-size:inherit; }
     .btn-quick-add { padding:6px 12px; font-size:0.9em; margin:2px; }
+    #email-content-modal { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px; }
+    #email-content-modal.hidden { display: none; }
+    #email-content-modal .modal-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.4); cursor: pointer; }
+    #email-content-modal .modal-box { position: relative; max-width: 720px; width: 100%; max-height: 90vh; display: flex; flex-direction: column; background: #f8f6f1; border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.2); overflow: hidden; }
+    #email-content-modal .modal-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 16px 20px; background: #fff; border-bottom: 1px solid #ddd; flex-shrink: 0; }
+    #email-content-modal .modal-header-info { flex: 1; min-width: 0; }
+    #email-content-modal .modal-header h3 { margin: 0 0 4px; font-size: 1.1rem; color: #1a3a52; }
+    #email-content-modal .modal-header .modal-meta { font-size: 0.9em; color: #666; }
+    #email-content-modal .modal-close { flex-shrink: 0; width: 32px; height: 32px; padding: 0; font-size: 1.5rem; line-height: 1; background: transparent; color: #666; border: none; cursor: pointer; border-radius: 4px; }
+    #email-content-modal .modal-close:hover { background: #eee; color: #333; }
+    #email-content-modal .modal-body { flex: 1; overflow: auto; padding: 20px; font-size: 1.05rem; line-height: 1.65; color: #333; max-width: 65ch; margin: 0 auto; width: 100%; }
+    #email-content-modal .modal-body table { max-width: 100%; }
   </style>
 </head>
 <body>
@@ -158,6 +170,20 @@
       </table>
       <p id="emails-empty" class="hidden" style="margin-top:12px; color:#666;">暂无发送记录</p>
     </section>
+  </div>
+
+  <div id="email-content-modal" class="hidden">
+    <div class="modal-overlay" id="email-modal-overlay"></div>
+    <div class="modal-box">
+      <div class="modal-header">
+        <div class="modal-header-info">
+          <h3 id="email-modal-subject"></h3>
+          <div class="modal-meta" id="email-modal-meta"></div>
+        </div>
+        <button type="button" class="modal-close" id="email-modal-close" title="关闭">×</button>
+      </div>
+      <div class="modal-body" id="email-modal-body"></div>
+    </div>
   </div>
 
   <script>
@@ -304,10 +330,8 @@
         tbody.innerHTML = emails.map((e, i) => {
           const hasContent = e.content && e.content.trim();
           const actions = (hasContent ? `<button type="button" class="link-btn btn-view-content" data-idx="${i}">查看内容</button> ` : '') + `<button type="button" class="link-btn btn-delete-email" data-id="${e.id}">删除</button>`;
-          return `
-          <tr><td style="padding:8px; border-bottom:1px solid #eee;"><input type="checkbox" class="email-row-check" data-id="${e.id}"></td><td style="padding:8px; border-bottom:1px solid #eee;">${escapeHtml(EMAIL_TYPE_LABELS[e.type] || e.type)}</td><td style="padding:8px; border-bottom:1px solid #eee;">${escapeHtml(e.subject)}</td><td style="padding:8px; border-bottom:1px solid #eee;">${formatSentAt(e.sent_at)}</td><td style="padding:8px; border-bottom:1px solid #eee;">${actions}</td></tr>
-          ${hasContent ? `<tr id="email-content-${i}" class="hidden"><td colspan="5" style="padding:12px; border-bottom:1px solid #eee; background:#fafafa;"><div class="email-content-preview" style="max-height:300px; overflow:auto; border:1px solid #ddd; padding:12px; background:#fff; font-size:0.9em;"></div></td></tr>` : ''}
-        `}).join('');
+          return `<tr><td style="padding:8px; border-bottom:1px solid #eee;"><input type="checkbox" class="email-row-check" data-id="${e.id}"></td><td style="padding:8px; border-bottom:1px solid #eee;">${escapeHtml(EMAIL_TYPE_LABELS[e.type] || e.type)}</td><td style="padding:8px; border-bottom:1px solid #eee;">${escapeHtml(e.subject)}</td><td style="padding:8px; border-bottom:1px solid #eee;">${formatSentAt(e.sent_at)}</td><td style="padding:8px; border-bottom:1px solid #eee;">${actions}</td></tr>`;
+        }).join('');
         selectAllTh.checked = false;
         selectAllTh.indeterminate = false;
         selectAllTh.onchange = () => {
@@ -333,21 +357,28 @@
             } catch (err) { alert(err.message || '删除失败'); }
           });
         });
+        function closeEmailModal() {
+          document.getElementById('email-content-modal').classList.add('hidden');
+          document.removeEventListener('keydown', handleModalEscape);
+        }
+        function handleModalEscape(e) {
+          if (e.key === 'Escape') closeEmailModal();
+        }
+        function openEmailModal(email) {
+          document.getElementById('email-modal-subject').textContent = email.subject || '(无主题)';
+          document.getElementById('email-modal-meta').textContent = `${EMAIL_TYPE_LABELS[email.type] || email.type} · ${formatSentAt(email.sent_at)}`;
+          document.getElementById('email-modal-body').innerHTML = email.content || '';
+          document.getElementById('email-content-modal').classList.remove('hidden');
+          document.addEventListener('keydown', handleModalEscape);
+        }
+        document.getElementById('email-modal-close').onclick = closeEmailModal;
+        document.getElementById('email-modal-overlay').onclick = closeEmailModal;
         tbody.querySelectorAll('.btn-view-content').forEach(btn => {
           btn.addEventListener('click', () => {
-            const idx = btn.dataset.idx;
-            const contentRow = document.getElementById('email-content-' + idx);
-            const preview = contentRow?.querySelector('.email-content-preview');
+            const idx = parseInt(btn.dataset.idx, 10);
             const email = emails[idx];
-            if (!contentRow || !preview || !email?.content) return;
-            if (contentRow.classList.contains('hidden')) {
-              preview.innerHTML = email.content;
-              contentRow.classList.remove('hidden');
-              btn.textContent = '收起';
-            } else {
-              contentRow.classList.add('hidden');
-              btn.textContent = '查看内容';
-            }
+            if (!email?.content) return;
+            openEmailModal(email);
           });
         });
       } catch (e) {
