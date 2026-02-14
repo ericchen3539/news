@@ -37,6 +37,7 @@
     nav { margin-bottom: 24px; }
     nav a { margin-right: 16px; }
     .link-btn { background:none; border:none; color:#06c; text-decoration:underline; cursor:pointer; padding:0; font-size:inherit; }
+    .btn-quick-add { padding:6px 12px; font-size:0.9em; margin:2px; }
   </style>
 </head>
 <body>
@@ -78,14 +79,16 @@
   <div id="page-config" class="page hidden">
     <section>
       <h2>新闻源</h2>
-      <p class="section-hint">可添加多个新闻网站，逐一添加后点击「添加此源」。</p>
+      <p class="section-hint">可添加多个新闻网站。填写网站地址或使用下方快捷添加。</p>
       <div class="source-form">
         <label>网站地址</label>
-        <input type="url" id="source-url" placeholder="如 https://news.google.com/rss 或 https://rss.nytimes.com/services/xml/rss/nyt/World.xml">
-        <label>新闻板块（选填）</label>
-        <input type="text" id="source-label" placeholder="不填则收录该站全部新闻。填则仅收录该板块，如：World、科技">
+        <input type="url" id="source-url" placeholder="如 news.google.com 或 https://techcrunch.com">
+        <label>新闻板块（选填，Google News 填 Home/U.S./World 等）</label>
+        <input type="text" id="source-label" placeholder="如：Home、U.S.、World、Business、Technology">
         <button id="btn-add-source">添加此源</button>
       </div>
+      <p class="section-hint" style="margin-top:12px;">快捷添加 Google News：</p>
+      <div class="checkbox-group" id="source-quick-add"></div>
       <div class="source-summary" id="source-summary"></div>
       <ul class="source-list" id="source-list"></ul>
     </section>
@@ -241,12 +244,27 @@
     const WEEKDAY_NAMES = ['周日','周一','周二','周三','周四','周五','周六'];
 
     async function loadConfig() {
-      const [sources, filters, schedule, presets] = await Promise.all([
+      const [sources, filters, schedule, presets, sourcePresets] = await Promise.all([
         api('/sources'),
         api('/filters'),
         api('/schedule'),
-        api('/filter-presets')
+        api('/filter-presets'),
+        api('/source-presets').catch(() => ({ googleNews: [] }))
       ]);
+
+      const quickAdd = document.getElementById('source-quick-add');
+      const gnews = sourcePresets.googleNews || [];
+      quickAdd.innerHTML = gnews.map(p => `
+        <button type="button" class="btn-quick-add" data-url="news.google.com" data-label="${escapeHtml(p.label)}">+ ${escapeHtml(p.label)}</button>
+      `).join('');
+      quickAdd.querySelectorAll('.btn-quick-add').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          try {
+            await api('/sources', { method: 'POST', body: JSON.stringify({ source_url: btn.dataset.url, label: btn.dataset.label }) });
+            loadConfig();
+          } catch (e) { alert(e.message); }
+        });
+      });
 
       const summary = document.getElementById('source-summary');
       summary.textContent = sources.length ? `已添加 ${sources.length} 个新闻源：` : '暂无新闻源，请在上方添加。';

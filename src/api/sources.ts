@@ -8,6 +8,7 @@ import { getDb, saveDb } from "../db/index.js";
 import { run, runReturning, all } from "../db/query.js";
 import { requireAuth } from "./middleware.js";
 import { discoverRssFeed } from "../fetcher/discover.js";
+import { getGoogleNewsPresetUrl } from "../fetcher/source-presets.js";
 
 export const sourcesRouter = Router();
 sourcesRouter.use(requireAuth);
@@ -38,7 +39,10 @@ sourcesRouter.post("/", async (req, res) => {
     return;
   }
 
-  const feedUrl = await discoverRssFeed(userInput);
+  let feedUrl: string | null = getGoogleNewsPresetUrl(userInput, typeof label === "string" ? label : "");
+  if (!feedUrl) {
+    feedUrl = await discoverRssFeed(userInput);
+  }
   if (!feedUrl) {
     res.status(400).json({
       error: "无法从该地址发现 RSS 源，请确认网站支持 RSS 或提供完整的 RSS 链接",

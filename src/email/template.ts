@@ -11,7 +11,7 @@ export interface DigestRow {
 
 export function buildDigestTable(rows: DigestRow[]): string {
   if (rows.length === 0) {
-    return "<p>No matching news articles today.</p>";
+    return "<p>今日暂无符合筛选条件的新闻。</p>";
   }
 
   const trs = rows
