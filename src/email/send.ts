@@ -40,11 +40,11 @@ export async function sendVerificationEmail(to: string, verifyUrl: string): Prom
     transport.sendMail({
       from: process.env.SMTP_FROM ?? "News Digest <noreply@example.com>",
       to,
-      subject: "Verify your email - News Digest",
+      subject: "请验证您的邮箱 - 新闻摘要",
       html: `
-      <p>Please verify your email by clicking the link below:</p>
+      <p>请点击下方链接验证您的邮箱：</p>
       <p><a href="${verifyUrl}">${verifyUrl}</a></p>
-      <p>This link expires in 24 hours.</p>
+      <p>此链接 24 小时内有效。</p>
     `,
     }),
     timeoutPromise,
@@ -54,7 +54,7 @@ export async function sendVerificationEmail(to: string, verifyUrl: string): Prom
 export async function sendDigestEmail(
   to: string,
   htmlTable: string,
-  subject = "Your News Digest"
+  subject = "您的新闻摘要"
 ): Promise<void> {
   if (process.env.SMTP_HOST === "skip" || !process.env.SMTP_HOST) {
     console.log("[Dev] Skip SMTP. Digest would send to:", to, "| Subject:", subject);
@@ -66,11 +66,11 @@ export async function sendDigestEmail(
     to,
     subject,
     html: `
-      <h2>News Digest</h2>
-      <p>Here are your curated news articles:</p>
+      <h2>新闻摘要</h2>
+      <p>以下是您订阅的精选新闻：</p>
       ${htmlTable}
       <hr>
-      <p><small>You received this because you subscribed. <a href="${process.env.APP_URL}/unsubscribe">Unsubscribe</a></small></p>
+      <p><small>您收到此邮件是因为您已订阅。<a href="${process.env.APP_URL}/unsubscribe">退订</a></small></p>
     `,
   });
 }

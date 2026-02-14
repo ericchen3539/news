@@ -33,7 +33,8 @@
     .source-list li:last-child { border-bottom: none; }
     .source-list li span { flex: 1; overflow: hidden; min-width: 0; }
     .source-item { display: flex; flex-direction: column; gap: 2px; }
-    .source-item small { color: #666; font-size: 0.85em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .source-label { font-weight: 700; font-size: 1.05em; color: #1a3a52; }
+    .source-item small.source-url { color: #666; font-size: 0.85em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     nav { margin-bottom: 24px; }
     nav a { margin-right: 16px; }
     .link-btn { background:none; border:none; color:#06c; text-decoration:underline; cursor:pointer; padding:0; font-size:inherit; }
@@ -79,15 +80,7 @@
   <div id="page-config" class="page hidden">
     <section>
       <h2>新闻源</h2>
-      <p class="section-hint">可添加多个新闻网站。填写网站地址或使用下方快捷添加。</p>
-      <div class="source-form">
-        <label>网站地址</label>
-        <input type="url" id="source-url" placeholder="如 news.google.com 或 https://techcrunch.com">
-        <label>新闻板块（选填，Google News 填 Home/U.S./World 等）</label>
-        <input type="text" id="source-label" placeholder="如：Home、U.S.、World、Business、Technology">
-        <button id="btn-add-source">添加此源</button>
-      </div>
-      <p class="section-hint" style="margin-top:12px;">快捷添加 Google News：</p>
+      <p class="section-hint">快捷添加 Google News：</p>
       <div class="checkbox-group" id="source-quick-add"></div>
       <div class="source-summary" id="source-summary"></div>
       <ul class="source-list" id="source-list"></ul>
@@ -272,7 +265,7 @@
       const list = document.getElementById('source-list');
       list.innerHTML = sources.map(s => `
         <li>
-          <span class="source-item"><strong>${escapeHtml(s.source_url)}</strong><small>${escapeHtml(s.label)}</small></span>
+          <span class="source-item"><span class="source-label">${escapeHtml(s.label || s.source_url)}</span><small class="source-url">${escapeHtml(s.source_url)}</small></span>
           <button data-id="${s.id}" class="btn-del">删除</button>
         </li>
       `).join('');
@@ -376,18 +369,6 @@
       sel.value = 'auto';
     }
     initTimezoneSelect();
-
-    document.getElementById('btn-add-source').addEventListener('click', async () => {
-      const url = document.getElementById('source-url').value.trim();
-      const label = document.getElementById('source-label').value.trim();
-      if (!url) return;
-      try {
-        await api('/sources', { method: 'POST', body: JSON.stringify({ source_url: url, label: label || undefined }) });
-        document.getElementById('source-url').value = '';
-        document.getElementById('source-label').value = '';
-        loadConfig();
-      } catch (e) { alert(e.message); }
-    });
 
     document.getElementById('btn-save-filters').addEventListener('click', async () => {
       const mode = document.getElementById('filter-mode').value;
