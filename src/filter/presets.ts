@@ -93,7 +93,28 @@ export function getFilterPresetsList(): { id: string; label: string }[] {
   return Object.entries(FILTER_PRESETS).map(([id, { label }]) => ({ id, label }));
 }
 
-/** Keywords indicating commercial/promotional content. Items matching these are excluded even if they match category keywords. */
+/**
+ * Phrases/domains that cause false keyword matches when they appear in text.
+ * Stripped before category matching (e.g., "Military.com" contains "military", "总统日" contains "总统").
+ */
+const TEXT_FALSE_POSITIVES = [
+  "military.com",
+  "military.org",
+  "military.net",
+  "presidents' day",
+  "presidents day",
+  "总统日",
+];
+
+export function stripSourceFalsePositives(text: string): string {
+  let result = text.toLowerCase();
+  for (const fp of TEXT_FALSE_POSITIVES) {
+    result = result.replace(new RegExp(fp.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi"), " ");
+  }
+  return result;
+}
+
+/** Keywords indicating commercial/promotional, product liability, or entertainment news. Items matching these are excluded even if they match category keywords. */
 export const COMMERCIAL_KEYWORDS = [
   "促销",
   "优惠",
@@ -113,6 +134,16 @@ export const COMMERCIAL_KEYWORDS = [
   "特惠",
   "降价",
   "打折",
+  "talc",
+  "滑石粉",
+  "baby powder",
+  "爽身粉",
+  "product liability",
+  "强生",
+  "box office",
+  "票房",
+  "movie",
+  "电影",
 ];
 
 export function expandCategories(categoryIds: string[]): string[] {

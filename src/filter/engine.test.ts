@@ -79,4 +79,34 @@ describe("filterNews", () => {
     expect(result).toHaveLength(1);
     expect(result[0].title).toBe("President Biden signs new legislation");
   });
+
+  it("include mode: excludes category match when keyword comes only from source domain", () => {
+    const items = [
+      makeItem("Rayman 30th Anniversary Edition Releases Tomorrow", "Game news from Military.com"),
+      makeItem("Military operations in the region continue"),
+    ];
+    const result = filterNews(items, "include", ["politics"]);
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe("Military operations in the region continue");
+  });
+
+  it("include mode: excludes product liability news even when matching politics keywords", () => {
+    const items = [
+      makeItem("Pennsylvania jury finds Johnson & Johnson liable for cancer in talc trial", "Legislation and policy discussed. 强生滑石粉诉讼."),
+      makeItem("Congress passes new legislation on immigration"),
+    ];
+    const result = filterNews(items, "include", ["politics"]);
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe("Congress passes new legislation on immigration");
+  });
+
+  it("include mode: excludes entertainment news matching Presidents Day / 总统日", () => {
+    const items = [
+      makeItem("Wuthering Heights Still Looking To Swoon $40M Over 4-Day Presidents' Day Frame", "Box office update. 总统日和情人节4天."),
+      makeItem("President Biden meets with European leaders"),
+    ];
+    const result = filterNews(items, "include", ["politics"]);
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe("President Biden meets with European leaders");
+  });
 });
