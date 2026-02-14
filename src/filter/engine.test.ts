@@ -109,4 +109,14 @@ describe("filterNews", () => {
     expect(result).toHaveLength(1);
     expect(result[0].title).toBe("President Biden meets with European leaders");
   });
+
+  it("include mode: excludes health/consumer news about hair extensions and chemicals", () => {
+    const items = [
+      makeItem("Harmful chemicals in extensions marketed to Black women", "Government regulation. 接发中发现有害化学物质."),
+      makeItem("Congress passes new legislation on immigration"),
+    ];
+    const result = filterNews(items, "include", ["politics"]);
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe("Congress passes new legislation on immigration");
+  });
 });

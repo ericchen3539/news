@@ -144,6 +144,11 @@ export const COMMERCIAL_KEYWORDS = [
   "票房",
   "movie",
   "电影",
+  "hair extensions",
+  "接发",
+  "辫子",
+  "chemicals",
+  "化学物质",
 ];
 
 export function expandCategories(categoryIds: string[]): string[] {
