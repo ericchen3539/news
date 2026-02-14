@@ -48,10 +48,14 @@
     #email-content-modal .modal-header-info { flex: 1; min-width: 0; }
     #email-content-modal .modal-header h3 { margin: 0 0 4px; font-size: 1.1rem; color: #1a3a52; }
     #email-content-modal .modal-header .modal-meta { font-size: 0.9em; color: #666; }
-    #email-content-modal .modal-close { flex-shrink: 0; width: 32px; height: 32px; padding: 0; font-size: 1.5rem; line-height: 1; background: transparent; color: #666; border: none; cursor: pointer; border-radius: 4px; }
-    #email-content-modal .modal-close:hover { background: #eee; color: #333; }
+    #email-content-modal .modal-actions { display: flex; gap: 4px; flex-shrink: 0; }
+    #email-content-modal .modal-btn { width: 32px; height: 32px; padding: 0; font-size: 1.1rem; line-height: 1; background: transparent; color: #666; border: none; cursor: pointer; border-radius: 4px; }
+    #email-content-modal .modal-btn:hover { background: #eee; color: #333; }
     #email-content-modal .modal-body { flex: 1; overflow: auto; padding: 20px; font-size: 1.05rem; line-height: 1.65; color: #333; max-width: 65ch; margin: 0 auto; width: 100%; }
     #email-content-modal .modal-body table { max-width: 100%; }
+    #email-content-modal .modal-pagination { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 12px 20px; background: #fff; border-top: 1px solid #ddd; flex-shrink: 0; }
+    #email-content-modal .modal-pagination.hidden { display: none; }
+    #email-content-modal .modal-pagination button { padding: 6px 12px; font-size: 0.9rem; }
   </style>
 </head>
 <body>
@@ -180,9 +184,17 @@
           <h3 id="email-modal-subject"></h3>
           <div class="modal-meta" id="email-modal-meta"></div>
         </div>
-        <button type="button" class="modal-close" id="email-modal-close" title="关闭">×</button>
+        <div class="modal-actions">
+          <button type="button" class="modal-btn" id="email-modal-fullscreen" title="全屏">⛶</button>
+          <button type="button" class="modal-btn" id="email-modal-close" title="关闭">×</button>
+        </div>
       </div>
       <div class="modal-body" id="email-modal-body"></div>
+      <div class="modal-pagination hidden" id="email-modal-pagination">
+        <button type="button" id="email-modal-prev">上一页</button>
+        <span id="email-modal-page-info"></span>
+        <button type="button" id="email-modal-next">下一页</button>
+      </div>
     </div>
   </div>
 
@@ -357,18 +369,70 @@
             } catch (err) { alert(err.message || '删除失败'); }
           });
         });
+        const modalEl = document.getElementById('email-content-modal');
+        const fullscreenBtn = document.getElementById('email-modal-fullscreen');
         function closeEmailModal() {
-          document.getElementById('email-content-modal').classList.add('hidden');
+          if (document.fullscreenElement === modalEl) document.exitFullscreen?.();
+          modalEl.classList.add('hidden');
           document.removeEventListener('keydown', handleModalEscape);
         }
         function handleModalEscape(e) {
-          if (e.key === 'Escape') closeEmailModal();
+          if (e.key === 'Escape') {
+            if (document.fullscreenElement === modalEl) document.exitFullscreen?.();
+            else closeEmailModal();
+          }
+        }
+        function updateFullscreenBtn() {
+          fullscreenBtn.textContent = document.fullscreenElement === modalEl ? '✕' : '⛶';
+          fullscreenBtn.title = document.fullscreenElement === modalEl ? '退出全屏' : '全屏';
+        }
+        fullscreenBtn.onclick = () => {
+          if (document.fullscreenElement === modalEl) document.exitFullscreen?.();
+          else modalEl.requestFullscreen?.();
+        };
+        modalEl.addEventListener('fullscreenchange', updateFullscreenBtn);
+        const PAGE_SIZE = 10;
+        let paginatedRows = [];
+        let currentPage = 1;
+        const bodyEl = document.getElementById('email-modal-body');
+        const paginationEl = document.getElementById('email-modal-pagination');
+        const prevBtn = document.getElementById('email-modal-prev');
+        const nextBtn = document.getElementById('email-modal-next');
+        const pageInfoEl = document.getElementById('email-modal-page-info');
+        function renderPaginatedContent() {
+          const totalPages = Math.ceil(paginatedRows.length / PAGE_SIZE) || 1;
+          const start = (currentPage - 1) * PAGE_SIZE;
+          const end = start + PAGE_SIZE;
+          const rows = paginatedRows.slice(start, end);
+          const parser = document.createElement('div');
+          parser.innerHTML = paginatedRows.length ? '<table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse;width:100%;"><thead><tr style="background:#f0f0f0;"><th>标题</th><th>摘要</th><th>来源</th></tr></thead><tbody></tbody></table>' : '';
+          const tbody = parser.querySelector('tbody');
+          rows.forEach((tr) => tbody.appendChild(tr.cloneNode(true)));
+          bodyEl.innerHTML = parser.innerHTML;
+          pageInfoEl.textContent = `第 ${currentPage} / ${totalPages} 页（共 ${paginatedRows.length} 条）`;
+          prevBtn.disabled = currentPage <= 1;
+          nextBtn.disabled = currentPage >= totalPages;
         }
         function openEmailModal(email) {
           document.getElementById('email-modal-subject').textContent = email.subject || '(无主题)';
           document.getElementById('email-modal-meta').textContent = `${EMAIL_TYPE_LABELS[email.type] || email.type} · ${formatSentAt(email.sent_at)}`;
-          document.getElementById('email-modal-body').innerHTML = email.content || '';
-          document.getElementById('email-content-modal').classList.remove('hidden');
+          const parser = document.createElement('div');
+          parser.innerHTML = email.content || '';
+          const table = parser.querySelector('table');
+          const tbodyRows = table?.querySelectorAll('tbody tr');
+          if (tbodyRows && tbodyRows.length > PAGE_SIZE) {
+            paginatedRows = Array.from(tbodyRows);
+            currentPage = 1;
+            paginationEl.classList.remove('hidden');
+            renderPaginatedContent();
+            prevBtn.onclick = () => { currentPage--; renderPaginatedContent(); };
+            nextBtn.onclick = () => { currentPage++; renderPaginatedContent(); };
+          } else {
+            bodyEl.innerHTML = email.content || '';
+            paginationEl.classList.add('hidden');
+          }
+          modalEl.classList.remove('hidden');
+          updateFullscreenBtn();
           document.addEventListener('keydown', handleModalEscape);
         }
         document.getElementById('email-modal-close').onclick = closeEmailModal;
