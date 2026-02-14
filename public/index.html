@@ -48,6 +48,7 @@
     <a href="#" data-page="register">注册</a>
     <a href="#" data-page="login">登录</a>
     <a href="#" data-page="config" class="hidden" id="nav-config">配置</a>
+    <a href="#" data-page="emails" class="hidden" id="nav-emails">发送记录</a>
     <a href="#" data-page="logout" class="hidden" id="nav-logout">退出</a>
   </nav>
 
@@ -134,6 +135,22 @@
     </section>
   </div>
 
+  <div id="page-emails" class="page hidden">
+    <section>
+      <h2>发送记录</h2>
+      <p class="section-hint">以下是发送给您的邮件记录，便于在未收到时核对。</p>
+      <div id="emails-loading" class="hidden">加载中...</div>
+      <div id="emails-error" class="error hidden"></div>
+      <table id="emails-table" class="emails-table" style="width:100%; border-collapse:collapse;">
+        <thead>
+          <tr><th style="text-align:left; padding:8px; border-bottom:1px solid #ddd;">类型</th><th style="text-align:left; padding:8px; border-bottom:1px solid #ddd;">主题</th><th style="text-align:left; padding:8px; border-bottom:1px solid #ddd;">发送时间</th></tr>
+        </thead>
+        <tbody id="emails-tbody"></tbody>
+      </table>
+      <p id="emails-empty" class="hidden" style="margin-top:12px; color:#666;">暂无发送记录</p>
+    </section>
+  </div>
+
   <script>
     const API = '/api';
     let token = localStorage.getItem('token');
@@ -144,8 +161,10 @@
       const el = document.getElementById('page-' + name);
       if (el) el.classList.remove('hidden');
       document.getElementById('nav-config').classList.toggle('hidden', !token);
+      document.getElementById('nav-emails').classList.toggle('hidden', !token);
       document.getElementById('nav-logout').classList.toggle('hidden', !token);
       if (name === 'config' && token) loadConfig();
+      if (name === 'emails' && token) loadEmails();
     }
 
     document.querySelectorAll('[data-page]').forEach(a => {
@@ -236,6 +255,39 @@
     });
 
     const WEEKDAY_NAMES = ['周日','周一','周二','周三','周四','周五','周六'];
+
+    const EMAIL_TYPE_LABELS = { verification: '验证邮件', digest: '新闻摘要' };
+
+    function formatSentAt(ts) {
+      const d = new Date(ts * 1000);
+      return d.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+    }
+
+    async function loadEmails() {
+      const tbody = document.getElementById('emails-tbody');
+      const loading = document.getElementById('emails-loading');
+      const errEl = document.getElementById('emails-error');
+      const emptyEl = document.getElementById('emails-empty');
+      tbody.innerHTML = '';
+      errEl.classList.add('hidden');
+      emptyEl.classList.add('hidden');
+      loading.classList.remove('hidden');
+      try {
+        const { emails } = await api('/emails');
+        loading.classList.add('hidden');
+        if (!emails || emails.length === 0) {
+          emptyEl.classList.remove('hidden');
+          return;
+        }
+        tbody.innerHTML = emails.map(e => `
+          <tr><td style="padding:8px; border-bottom:1px solid #eee;">${escapeHtml(EMAIL_TYPE_LABELS[e.type] || e.type)}</td><td style="padding:8px; border-bottom:1px solid #eee;">${escapeHtml(e.subject)}</td><td style="padding:8px; border-bottom:1px solid #eee;">${formatSentAt(e.sent_at)}</td></tr>
+        `).join('');
+      } catch (e) {
+        loading.classList.add('hidden');
+        errEl.textContent = e.message || '加载失败';
+        errEl.classList.remove('hidden');
+      }
+    }
 
     async function loadConfig() {
       const [sources, filters, schedule, presets, sourcePresets] = await Promise.all([

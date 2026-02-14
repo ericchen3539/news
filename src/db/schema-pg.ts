@@ -42,6 +42,14 @@ export const SCHEMA_PG_STATEMENTS = [
     expires_at BIGINT NOT NULL,
     created_at BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW())::BIGINT)
   )`,
+  `CREATE TABLE IF NOT EXISTS sent_emails (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    type TEXT NOT NULL CHECK (type IN ('verification', 'digest')),
+    subject TEXT NOT NULL,
+    sent_at BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW())::BIGINT)
+  )`,
   `CREATE INDEX IF NOT EXISTS idx_user_sources_user ON user_sources(user_id)`,
   `CREATE INDEX IF NOT EXISTS idx_verification_tokens_token ON verification_tokens(token)`,
+  `CREATE INDEX IF NOT EXISTS idx_sent_emails_user_id ON sent_emails(user_id)`,
 ];

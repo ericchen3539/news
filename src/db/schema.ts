@@ -51,6 +51,16 @@ CREATE TABLE IF NOT EXISTS verification_tokens (
   created_at INTEGER NOT NULL DEFAULT (unixepoch())
 );
 
+-- Sent email log (for user query)
+CREATE TABLE IF NOT EXISTS sent_emails (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  type TEXT NOT NULL CHECK (type IN ('verification', 'digest')),
+  subject TEXT NOT NULL,
+  sent_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
 CREATE INDEX IF NOT EXISTS idx_user_sources_user ON user_sources(user_id);
 CREATE INDEX IF NOT EXISTS idx_verification_tokens_token ON verification_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_sent_emails_user_id ON sent_emails(user_id);
 `;

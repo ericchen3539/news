@@ -11,6 +11,7 @@ import { sourcePresetsRouter } from "./source-presets.js";
 import { sourcesRouter } from "./sources.js";
 import { filtersRouter } from "./filters.js";
 import { scheduleRouter } from "./schedule.js";
+import { emailsRouter } from "./emails.js";
 
 export const apiRouter = Router();
 
@@ -22,3 +23,4 @@ apiRouter.use("/source-presets", sourcePresetsRouter);
 apiRouter.use("/sources", sourcesRouter);
 apiRouter.use("/filters", filtersRouter);
 apiRouter.use("/schedule", scheduleRouter);
+apiRouter.use("/emails", emailsRouter);

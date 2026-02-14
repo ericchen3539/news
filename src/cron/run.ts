@@ -10,6 +10,7 @@ import { filterNews } from "../filter/engine.js";
 import { translateBatch } from "../translate/index.js";
 import { buildDigestTable } from "../email/template.js";
 import { sendDigestEmail } from "../email/send.js";
+import { logSentEmail } from "../email/log.js";
 
 export interface UserToNotify {
   userId: number;
@@ -169,12 +170,15 @@ export async function getUserForDigest(userId: number): Promise<UserToNotify | n
   };
 }
 
+const DEFAULT_DIGEST_SUBJECT = "您的新闻摘要";
+
 export async function processUser(user: UserToNotify): Promise<void> {
   const items = await fetchAndMerge(user.sources);
   const filtered = filterNews(items, user.mode, user.categories);
   const translated = await translateBatch(filtered);
   const html = buildDigestTable(translated);
-  await sendDigestEmail(user.email, html);
+  await sendDigestEmail(user.email, html, DEFAULT_DIGEST_SUBJECT);
+  await logSentEmail(user.userId, "digest", DEFAULT_DIGEST_SUBJECT);
 }
 
 export async function runTick(): Promise<void> {

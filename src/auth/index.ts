@@ -8,6 +8,7 @@ import { randomBytes } from "crypto";
 import { getDb, saveDb } from "../db/index.js";
 import { run, get, runReturning } from "../db/query.js";
 import { sendVerificationEmail } from "../email/send.js";
+import { logSentEmail } from "../email/log.js";
 
 const SALT_ROUNDS = 10;
 const JWT_SECRET = process.env.JWT_SECRET ?? "dev-secret";
@@ -54,6 +55,7 @@ export async function register(
     console.error("[Auth] Failed to send verification email:", err);
     return { ok: false, error: "Could not send verification email. Please try again later.", statusCode: 503 };
   }
+  await logSentEmail(userId, "verification", "请验证您的邮箱 - 新闻摘要");
 
   if (process.env.DEV_VERIFY_EMAIL === "1") {
     const now = Math.floor(Date.now() / 1000);
