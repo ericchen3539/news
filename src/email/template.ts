@@ -19,9 +19,9 @@ export function buildDigestTable(rows: DigestRow[]): string {
     .map(
       (r) => `
     <tr>
-      <td><a href="${escapeHtml(r.link)}"><div style="font-weight:500;">${escapeHtml(r.title)}</div><div style="font-size:0.9em;color:#555;margin-top:4px;">${escapeHtml(r.titleZh)}</div></a></td>
+      <td><a href="${escapeHtml(r.link)}" target="_blank" rel="noopener noreferrer"><div style="font-weight:500;">${escapeHtml(r.title)}</div><div style="font-size:0.9em;color:#555;margin-top:4px;">${escapeHtml(r.titleZh)}</div></a></td>
       <td>${escapeHtml(r.summaryZh)}</td>
-      <td><a href="${escapeHtml(r.link)}">${escapeHtml(r.sourceLabel)}</a></td>
+      <td><a href="${escapeHtml(r.link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(r.sourceLabel)}</a></td>
     </tr>
   `
     )

@@ -403,6 +403,12 @@
         let paginatedRows = [];
         let currentPage = 1;
         const bodyEl = document.getElementById('email-modal-body');
+        function setLinksOpenInNewTab(container) {
+          (container || bodyEl).querySelectorAll('a[href]').forEach((a) => {
+            a.setAttribute('target', '_blank');
+            a.setAttribute('rel', 'noopener noreferrer');
+          });
+        }
         const paginationEl = document.getElementById('email-modal-pagination');
         const prevBtn = document.getElementById('email-modal-prev');
         const nextBtn = document.getElementById('email-modal-next');
@@ -417,6 +423,7 @@
           const tbody = parser.querySelector('tbody');
           rows.forEach((tr) => tbody.appendChild(tr.cloneNode(true)));
           bodyEl.innerHTML = parser.innerHTML;
+          setLinksOpenInNewTab();
           pageInfoEl.textContent = `第 ${currentPage} / ${totalPages} 页（共 ${paginatedRows.length} 条）`;
           prevBtn.disabled = currentPage <= 1;
           nextBtn.disabled = currentPage >= totalPages;
@@ -437,6 +444,7 @@
             nextBtn.onclick = () => { currentPage++; renderPaginatedContent(); };
           } else {
             bodyEl.innerHTML = email.content || '';
+            setLinksOpenInNewTab();
             paginationEl.classList.add('hidden');
           }
           modalEl.classList.remove('hidden');
