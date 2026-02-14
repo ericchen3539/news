@@ -103,30 +103,35 @@
     <section>
       <h2>发送频率与时间</h2>
       <label>频率</label>
-      <select id="schedule-frequency">
+      <input type="text" id="schedule-frequency" list="schedule-frequency-list" placeholder="daily/weekly/biweekly/monthly" autocomplete="off">
+      <datalist id="schedule-frequency-list">
         <option value="daily">每天</option>
         <option value="weekly">每周</option>
         <option value="biweekly">每两周</option>
         <option value="monthly">每月</option>
-      </select>
+      </datalist>
       <label id="label-weekday">星期几</label>
-      <select id="schedule-weekday" class="hidden">
+      <input type="text" id="schedule-weekday" list="schedule-weekday-list" class="hidden" placeholder="0-6" autocomplete="off">
+      <datalist id="schedule-weekday-list">
         <option value="0">周日</option>
-        <option value="1" selected>周一</option>
+        <option value="1">周一</option>
         <option value="2">周二</option>
         <option value="3">周三</option>
         <option value="4">周四</option>
         <option value="5">周五</option>
         <option value="6">周六</option>
-      </select>
+      </datalist>
       <label id="label-day" class="hidden">每月几号</label>
-      <select id="schedule-day" class="hidden"></select>
+      <input type="text" id="schedule-day" list="schedule-day-list" class="hidden" placeholder="1-31" autocomplete="off">
+      <datalist id="schedule-day-list"></datalist>
       <label>发送时间（24小时制）</label>
       <div class="row">
-        <select id="schedule-hour"></select>
+        <input type="text" id="schedule-hour" list="schedule-hour-list" placeholder="00-23" style="width:4em;" autocomplete="off">
         <span>:</span>
-        <select id="schedule-minute"></select>
+        <input type="text" id="schedule-minute" list="schedule-minute-list" placeholder="00-59" style="width:4em;" autocomplete="off">
       </div>
+      <datalist id="schedule-hour-list"></datalist>
+      <datalist id="schedule-minute-list"></datalist>
       <label>时区</label>
       <select id="schedule-timezone"></select>
       <button id="btn-save-schedule">保存</button>
@@ -397,23 +402,25 @@
       document.getElementById('schedule-summary').textContent = `当前：${scheduleText} (${tz})`;
     }
 
-    document.getElementById('schedule-frequency').addEventListener('change', () => {
-      const freq = document.getElementById('schedule-frequency').value;
+    const FREQ_MAP = { '每天':'daily', '每周':'weekly', '每两周':'biweekly', '每月':'monthly' };
+    function normFreq(v) { return FREQ_MAP[v?.trim()] || v?.trim() || 'daily'; }
+    function toggleFreqFields() {
+      const freq = normFreq(document.getElementById('schedule-frequency').value);
       document.getElementById('schedule-weekday').classList.toggle('hidden', !['weekly','biweekly'].includes(freq));
       document.getElementById('label-weekday').classList.toggle('hidden', !['weekly','biweekly'].includes(freq));
       document.getElementById('schedule-day').classList.toggle('hidden', freq !== 'monthly');
       document.getElementById('label-day').classList.toggle('hidden', freq !== 'monthly');
-    });
+    }
+    document.getElementById('schedule-frequency').addEventListener('input', toggleFreqFields);
+    document.getElementById('schedule-frequency').addEventListener('change', toggleFreqFields);
 
-    const daySelect = document.getElementById('schedule-day');
-    for (let i = 1; i <= 31; i++) daySelect.innerHTML += `<option value="${i}">${i}日</option>`;
+    const dayDatalist = document.getElementById('schedule-day-list');
+    for (let i = 1; i <= 31; i++) dayDatalist.innerHTML += `<option value="${i}">${i}日</option>`;
 
-    const hourSelect = document.getElementById('schedule-hour');
-    const minuteSelect = document.getElementById('schedule-minute');
-    for (let i = 0; i < 24; i++) hourSelect.innerHTML += `<option value="${String(i).padStart(2,'0')}">${String(i).padStart(2,'0')}时</option>`;
-    for (let i = 0; i < 60; i++) minuteSelect.innerHTML += `<option value="${String(i).padStart(2,'0')}">${String(i).padStart(2,'0')}分</option>`;
-    hourSelect.value = '06';
-    minuteSelect.value = '00';
+    const hourDatalist = document.getElementById('schedule-hour-list');
+    const minuteDatalist = document.getElementById('schedule-minute-list');
+    for (let i = 0; i < 24; i++) hourDatalist.innerHTML += `<option value="${String(i).padStart(2,'0')}">`;
+    for (let i = 0; i < 60; i++) minuteDatalist.innerHTML += `<option value="${String(i).padStart(2,'0')}">`;
 
     const TIMEZONES = [
       ['auto', '自动（使用系统时区）'],
@@ -457,18 +464,21 @@
     });
 
     document.getElementById('btn-save-schedule').addEventListener('click', async () => {
-      const frequency = document.getElementById('schedule-frequency').value;
-      const send_time = document.getElementById('schedule-hour').value + ':' + document.getElementById('schedule-minute').value;
+      const frequency = normFreq(document.getElementById('schedule-frequency').value);
+      const h = String(parseInt(document.getElementById('schedule-hour').value, 10) || 0).padStart(2, '0');
+      const m = String(parseInt(document.getElementById('schedule-minute').value, 10) || 0).padStart(2, '0');
+      const send_time = (parseInt(h,10)>=0&&parseInt(h,10)<=23 ? h : '06') + ':' + (parseInt(m,10)>=0&&parseInt(m,10)<=59 ? m : '00');
       let timezone = document.getElementById('schedule-timezone').value.trim();
       if (timezone === 'auto') timezone = getSystemTimezone();
       const weekday = parseInt(document.getElementById('schedule-weekday').value, 10);
-      const day_of_month = parseInt(document.getElementById('schedule-day').value, 10);
+      const day_of_month = Math.min(31, Math.max(1, parseInt(document.getElementById('schedule-day').value, 10) || 1));
+      const wd = (weekday >= 0 && weekday <= 6) ? weekday : 1;
       await api('/schedule', { method: 'PUT', body: JSON.stringify({ frequency, send_time, timezone, weekday, day_of_month }) });
       const msg = document.getElementById('schedule-msg');
       msg.className = 'success'; msg.textContent = '已保存'; msg.classList.remove('hidden');
       let scheduleText = '';
       if (frequency === 'daily') scheduleText = `每天 ${send_time}`;
-      else if (frequency === 'weekly' || frequency === 'biweekly') scheduleText = `${frequency === 'biweekly' ? '每两周' : '每周'}${WEEKDAY_NAMES[weekday]} ${send_time}`;
+      else if (frequency === 'weekly' || frequency === 'biweekly') scheduleText = `${frequency === 'biweekly' ? '每两周' : '每周'}${WEEKDAY_NAMES[wd]} ${send_time}`;
       else if (frequency === 'monthly') scheduleText = `每月${day_of_month}日 ${send_time}`;
       document.getElementById('schedule-summary').textContent = `当前：${scheduleText} (${timezone})`;
       setTimeout(() => msg.classList.add('hidden'), 2000);

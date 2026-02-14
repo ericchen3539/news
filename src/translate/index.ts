@@ -42,6 +42,7 @@ export interface NewsItem {
 }
 
 export interface TranslatedItem {
+  title: string;
   titleZh: string;
   summaryZh: string;
   link: string;
@@ -57,6 +58,7 @@ export async function translateBatch(items: NewsItem[]): Promise<TranslatedItem[
     ]);
     await sleep(DELAY_MS);
     results.push({
+      title: item.title,
       titleZh,
       summaryZh,
       link: item.link,

@@ -8,14 +8,14 @@ import { buildDigestTable } from "./template.js";
 describe("buildDigestTable", () => {
   it("returns empty message when no rows", () => {
     const html = buildDigestTable([]);
-    expect(html).toContain("No matching news articles today");
+    expect(html).toContain("今日暂无符合筛选条件的新闻");
     expect(html).not.toContain("<table");
   });
 
   it("renders table with headers and rows", () => {
     const rows = [
-      { titleZh: "标题1", summaryZh: "摘要1", link: "https://a.com/1", sourceLabel: "Source A" },
-      { titleZh: "标题2", summaryZh: "摘要2", link: "https://b.com/2", sourceLabel: "Source B" },
+      { title: "Title 1", titleZh: "标题1", summaryZh: "摘要1", link: "https://a.com/1", sourceLabel: "Source A" },
+      { title: "Title 2", titleZh: "标题2", summaryZh: "摘要2", link: "https://b.com/2", sourceLabel: "Source B" },
     ];
     const html = buildDigestTable(rows);
     expect(html).toContain("<table");
@@ -31,6 +31,7 @@ describe("buildDigestTable", () => {
   it("escapes HTML in title to prevent XSS", () => {
     const rows = [
       {
+        title: "Safe",
         titleZh: "<script>alert(1)</script>",
         summaryZh: "safe",
         link: "https://x.com",
@@ -46,6 +47,7 @@ describe("buildDigestTable", () => {
   it("escapes HTML in summary", () => {
     const rows = [
       {
+        title: "Safe",
         titleZh: "Safe",
         summaryZh: "<img src=x onerror=alert(1)>",
         link: "https://x.com",
@@ -60,6 +62,7 @@ describe("buildDigestTable", () => {
   it("escapes ampersands and quotes in link", () => {
     const rows = [
       {
+        title: "Link",
         titleZh: "Link",
         summaryZh: "Desc",
         link: "https://x.com?a=1&b=2\"",
