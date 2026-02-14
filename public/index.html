@@ -62,6 +62,16 @@
     #email-content-modal .modal-pagination { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 12px 20px; background: #fff; border-top: 1px solid #ddd; flex-shrink: 0; }
     #email-content-modal .modal-pagination.hidden { display: none; }
     #email-content-modal .modal-pagination button { padding: 6px 12px; font-size: 0.9rem; }
+    .digest-card { margin-bottom: 16px; padding: 14px 16px; background: #fff; border: 1px solid #e5e5e5; border-radius: 6px; }
+    .digest-card:last-child { margin-bottom: 0; }
+    .digest-card-link { text-decoration: none; color: inherit; display: block; }
+    .digest-card-link:hover .digest-card-title { color: #06c; }
+    .digest-card-title { margin: 0 0 4px; font-size: 1.15rem; font-weight: 600; color: #1a3a52; line-height: 1.35; }
+    .digest-card-title-zh { margin: 0 0 8px; font-size: 0.9em; color: #555; line-height: 1.4; }
+    .digest-card-meta { margin: 0; font-size: 0.9em; color: #666; line-height: 1.5; }
+    .digest-card-source { display: inline-block; margin-right: 8px; font-weight: 500; color: #666; }
+    .digest-card-summary { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    #email-content-modal .modal-body:has(.digest-card) { max-width: none; }
   </style>
 </head>
 <body>
@@ -415,16 +425,42 @@
         const prevBtn = document.getElementById('email-modal-prev');
         const nextBtn = document.getElementById('email-modal-next');
         const pageInfoEl = document.getElementById('email-modal-page-info');
+        function parseRowToCardData(tr) {
+          const tds = tr.querySelectorAll('td');
+          if (tds.length < 3) return null;
+          const linkEl = tds[0].querySelector('a') || tds[2].querySelector('a');
+          const link = linkEl?.getAttribute('href') || linkEl?.href || '#';
+          const divs = tds[0].querySelectorAll('div');
+          const title = (divs[0]?.textContent || tds[0].textContent || '').trim();
+          const titleZh = (divs[1]?.textContent || '').trim();
+          const summary = (tds[1].textContent || '').trim();
+          const source = (tds[2].textContent || '').trim();
+          return { title, titleZh, summary, source, link };
+        }
+        function buildCardHtml(data) {
+          return `<article class="digest-card">
+  <a href="${escapeHtml(data.link)}" target="_blank" rel="noopener noreferrer" class="digest-card-link">
+    <h4 class="digest-card-title">${escapeHtml(data.title)}</h4>
+    ${data.titleZh ? `<p class="digest-card-title-zh">${escapeHtml(data.titleZh)}</p>` : ''}
+  </a>
+  <p class="digest-card-meta">
+    <span class="digest-card-source">${escapeHtml(data.source)}</span>
+    <span class="digest-card-summary">${escapeHtml(data.summary)}</span>
+  </p>
+</article>`;
+        }
+        function rowsToCardsHtml(rows) {
+          return rows.map((tr) => {
+            const data = parseRowToCardData(tr);
+            return data ? buildCardHtml(data) : '';
+          }).filter(Boolean).join('');
+        }
         function renderPaginatedContent() {
           const totalPages = Math.ceil(paginatedRows.length / PAGE_SIZE) || 1;
           const start = (currentPage - 1) * PAGE_SIZE;
           const end = start + PAGE_SIZE;
           const rows = paginatedRows.slice(start, end);
-          const parser = document.createElement('div');
-          parser.innerHTML = paginatedRows.length ? '<table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse;width:100%;table-layout:fixed;"><colgroup><col style="width:28%"><col style="width:60%"><col style="width:12%"></colgroup><thead><tr style="background:#f0f0f0;"><th>标题</th><th>摘要</th><th>来源</th></tr></thead><tbody></tbody></table>' : '';
-          const tbody = parser.querySelector('tbody');
-          rows.forEach((tr) => tbody.appendChild(tr.cloneNode(true)));
-          bodyEl.innerHTML = parser.innerHTML;
+          bodyEl.innerHTML = paginatedRows.length ? `<div class="digest-card-list">${rowsToCardsHtml(rows)}</div>` : '';
           setLinksOpenInNewTab();
           pageInfoEl.textContent = `第 ${currentPage} / ${totalPages} 页（共 ${paginatedRows.length} 条）`;
           prevBtn.disabled = currentPage <= 1;
@@ -437,13 +473,19 @@
           parser.innerHTML = email.content || '';
           const table = parser.querySelector('table');
           const tbodyRows = table?.querySelectorAll('tbody tr');
-          if (tbodyRows && tbodyRows.length > PAGE_SIZE) {
-            paginatedRows = Array.from(tbodyRows);
-            currentPage = 1;
-            paginationEl.classList.remove('hidden');
-            renderPaginatedContent();
-            prevBtn.onclick = () => { currentPage--; renderPaginatedContent(); };
-            nextBtn.onclick = () => { currentPage++; renderPaginatedContent(); };
+          if (tbodyRows && tbodyRows.length > 0) {
+            if (tbodyRows.length > PAGE_SIZE) {
+              paginatedRows = Array.from(tbodyRows);
+              currentPage = 1;
+              paginationEl.classList.remove('hidden');
+              renderPaginatedContent();
+              prevBtn.onclick = () => { currentPage--; renderPaginatedContent(); };
+              nextBtn.onclick = () => { currentPage++; renderPaginatedContent(); };
+            } else {
+              bodyEl.innerHTML = `<div class="digest-card-list">${rowsToCardsHtml(Array.from(tbodyRows))}</div>`;
+              setLinksOpenInNewTab();
+              paginationEl.classList.add('hidden');
+            }
           } else {
             bodyEl.innerHTML = email.content || '';
             setLinksOpenInNewTab();
