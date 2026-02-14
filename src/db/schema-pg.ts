@@ -47,6 +47,7 @@ export const SCHEMA_PG_STATEMENTS = [
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     type TEXT NOT NULL CHECK (type IN ('verification', 'digest')),
     subject TEXT NOT NULL,
+    content TEXT,
     sent_at BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW())::BIGINT)
   )`,
   `CREATE INDEX IF NOT EXISTS idx_user_sources_user ON user_sources(user_id)`,

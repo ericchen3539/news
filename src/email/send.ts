@@ -27,10 +27,17 @@ function getTransporter(): nodemailer.Transporter {
   return transporter;
 }
 
-export async function sendVerificationEmail(to: string, verifyUrl: string): Promise<void> {
+const VERIFICATION_SUBJECT = "请验证您的邮箱 - 新闻摘要";
+
+export async function sendVerificationEmail(to: string, verifyUrl: string): Promise<string> {
+  const html = `
+      <p>请点击下方链接验证您的邮箱：</p>
+      <p><a href="${verifyUrl}">${verifyUrl}</a></p>
+      <p>此链接 24 小时内有效。</p>
+    `;
   if (process.env.SMTP_HOST === "skip" || !process.env.SMTP_HOST) {
     console.log("[Dev] Skip SMTP. Verification URL:", verifyUrl);
-    return;
+    return html;
   }
   const transport = getTransporter();
   const timeoutPromise = new Promise<never>((_, reject) =>
@@ -40,37 +47,36 @@ export async function sendVerificationEmail(to: string, verifyUrl: string): Prom
     transport.sendMail({
       from: process.env.SMTP_FROM ?? "News Digest <noreply@example.com>",
       to,
-      subject: "请验证您的邮箱 - 新闻摘要",
-      html: `
-      <p>请点击下方链接验证您的邮箱：</p>
-      <p><a href="${verifyUrl}">${verifyUrl}</a></p>
-      <p>此链接 24 小时内有效。</p>
-    `,
+      subject: VERIFICATION_SUBJECT,
+      html,
     }),
     timeoutPromise,
   ]);
+  return html;
 }
 
 export async function sendDigestEmail(
   to: string,
   htmlTable: string,
   subject = "您的新闻摘要"
-): Promise<void> {
+): Promise<string> {
+  const html = `
+      <h2>新闻摘要</h2>
+      <p>以下是您订阅的精选新闻：</p>
+      ${htmlTable}
+      <hr>
+      <p><small>您收到此邮件是因为您已订阅。<a href="${process.env.APP_URL}/unsubscribe">退订</a></small></p>
+    `;
   if (process.env.SMTP_HOST === "skip" || !process.env.SMTP_HOST) {
     console.log("[Dev] Skip SMTP. Digest would send to:", to, "| Subject:", subject);
-    return;
+    return html;
   }
   const transport = getTransporter();
   await transport.sendMail({
     from: process.env.SMTP_FROM ?? "News Digest <noreply@example.com>",
     to,
     subject,
-    html: `
-      <h2>新闻摘要</h2>
-      <p>以下是您订阅的精选新闻：</p>
-      ${htmlTable}
-      <hr>
-      <p><small>您收到此邮件是因为您已订阅。<a href="${process.env.APP_URL}/unsubscribe">退订</a></small></p>
-    `,
+    html,
   });
+  return html;
 }

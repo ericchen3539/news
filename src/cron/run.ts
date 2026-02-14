@@ -176,9 +176,9 @@ export async function processUser(user: UserToNotify): Promise<void> {
   const items = await fetchAndMerge(user.sources);
   const filtered = filterNews(items, user.mode, user.categories);
   const translated = await translateBatch(filtered);
-  const html = buildDigestTable(translated);
-  await sendDigestEmail(user.email, html, DEFAULT_DIGEST_SUBJECT);
-  await logSentEmail(user.userId, "digest", DEFAULT_DIGEST_SUBJECT);
+  const htmlTable = buildDigestTable(translated);
+  const html = await sendDigestEmail(user.email, htmlTable, DEFAULT_DIGEST_SUBJECT);
+  await logSentEmail(user.userId, "digest", DEFAULT_DIGEST_SUBJECT, html);
 }
 
 export async function runTick(): Promise<void> {

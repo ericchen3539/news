@@ -17,9 +17,18 @@ async function migrate() {
     for (const stmt of SCHEMA_PG_STATEMENTS) {
       await (db as { query: (s: string) => Promise<unknown> }).query(stmt);
     }
+    await (db as { query: (s: string) => Promise<unknown> }).query(
+      "ALTER TABLE sent_emails ADD COLUMN IF NOT EXISTS content TEXT"
+    );
   } else {
     (db as { run: (s: string) => void }).run(SCHEMA);
     saveDb();
+    try {
+      (db as { run: (s: string) => void }).run("ALTER TABLE sent_emails ADD COLUMN content TEXT");
+      saveDb();
+    } catch (err) {
+      if (!String(err).includes("duplicate column")) throw err;
+    }
   }
   console.log("Migration complete.");
 }

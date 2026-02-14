@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS sent_emails (
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   type TEXT NOT NULL CHECK (type IN ('verification', 'digest')),
   subject TEXT NOT NULL,
+  content TEXT,
   sent_at INTEGER NOT NULL DEFAULT (unixepoch())
 );
 

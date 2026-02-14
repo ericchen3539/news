@@ -49,13 +49,14 @@ export async function register(
   const verifyUrl = `${appUrl}/verify?token=${token}`;
 
   // Must await on Vercel: serverless functions terminate after response, fire-and-forget never completes
+  let html: string;
   try {
-    await sendVerificationEmail(email, verifyUrl);
+    html = await sendVerificationEmail(email, verifyUrl);
   } catch (err) {
     console.error("[Auth] Failed to send verification email:", err);
     return { ok: false, error: "Could not send verification email. Please try again later.", statusCode: 503 };
   }
-  await logSentEmail(userId, "verification", "请验证您的邮箱 - 新闻摘要");
+  await logSentEmail(userId, "verification", "请验证您的邮箱 - 新闻摘要", html);
 
   if (process.env.DEV_VERIFY_EMAIL === "1") {
     const now = Math.floor(Date.now() / 1000);
