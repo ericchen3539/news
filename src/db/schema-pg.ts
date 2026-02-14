@@ -53,4 +53,5 @@ export const SCHEMA_PG_STATEMENTS = [
   `CREATE INDEX IF NOT EXISTS idx_user_sources_user ON user_sources(user_id)`,
   `CREATE INDEX IF NOT EXISTS idx_verification_tokens_token ON verification_tokens(token)`,
   `CREATE INDEX IF NOT EXISTS idx_sent_emails_user_id ON sent_emails(user_id)`,
+  `ALTER TABLE sent_emails ADD COLUMN IF NOT EXISTS content TEXT`,
 ];
