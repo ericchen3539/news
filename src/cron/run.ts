@@ -171,12 +171,9 @@ export async function getUserForDigest(userId: number): Promise<UserToNotify | n
 }
 
 function getDigestSubject(): string {
-  const dateStr = new Date().toLocaleDateString("zh-CN", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-  return `您的新闻摘要 - ${dateStr}`;
+  const d = new Date();
+  const dateStr = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+  return `${dateStr}摘要`;
 }
 
 export async function processUser(user: UserToNotify): Promise<void> {
