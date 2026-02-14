@@ -170,15 +170,23 @@ export async function getUserForDigest(userId: number): Promise<UserToNotify | n
   };
 }
 
-const DEFAULT_DIGEST_SUBJECT = "您的新闻摘要";
+function getDigestSubject(): string {
+  const dateStr = new Date().toLocaleDateString("zh-CN", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+  return `您的新闻摘要 - ${dateStr}`;
+}
 
 export async function processUser(user: UserToNotify): Promise<void> {
   const items = await fetchAndMerge(user.sources);
   const filtered = filterNews(items, user.mode, user.categories);
   const translated = await translateBatch(filtered);
   const htmlTable = buildDigestTable(translated);
-  const html = await sendDigestEmail(user.email, htmlTable, DEFAULT_DIGEST_SUBJECT);
-  await logSentEmail(user.userId, "digest", DEFAULT_DIGEST_SUBJECT, html);
+  const subject = getDigestSubject();
+  const html = await sendDigestEmail(user.email, htmlTable, subject);
+  await logSentEmail(user.userId, "digest", subject, html);
 }
 
 export async function runTick(): Promise<void> {

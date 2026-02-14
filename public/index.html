@@ -168,7 +168,7 @@
       <div id="emails-error" class="error hidden"></div>
       <table id="emails-table" class="emails-table" style="width:100%; border-collapse:collapse;">
         <thead>
-          <tr><th style="text-align:left; padding:8px; border-bottom:1px solid #ddd; width:36px;"><input type="checkbox" id="emails-select-all-th" title="全选"></th><th style="text-align:left; padding:8px; border-bottom:1px solid #ddd;">类型</th><th style="text-align:left; padding:8px; border-bottom:1px solid #ddd;">主题</th><th style="text-align:left; padding:8px; border-bottom:1px solid #ddd;">发送时间</th><th style="text-align:left; padding:8px; border-bottom:1px solid #ddd;">操作</th></tr>
+          <tr><th style="text-align:left; padding:8px; border-bottom:1px solid #ddd; width:36px;"><input type="checkbox" id="emails-select-all-th" title="全选"></th><th style="text-align:left; padding:8px; border-bottom:1px solid #ddd;">主题</th><th style="text-align:left; padding:8px; border-bottom:1px solid #ddd;">发送时间</th><th style="text-align:left; padding:8px; border-bottom:1px solid #ddd;">操作</th></tr>
         </thead>
         <tbody id="emails-tbody"></tbody>
       </table>
@@ -342,7 +342,7 @@
         tbody.innerHTML = emails.map((e, i) => {
           const hasContent = e.content && e.content.trim();
           const actions = (hasContent ? `<button type="button" class="link-btn btn-view-content" data-idx="${i}">查看内容</button> ` : '') + `<button type="button" class="link-btn btn-delete-email" data-id="${e.id}">删除</button>`;
-          return `<tr><td style="padding:8px; border-bottom:1px solid #eee;"><input type="checkbox" class="email-row-check" data-id="${e.id}"></td><td style="padding:8px; border-bottom:1px solid #eee;">${escapeHtml(EMAIL_TYPE_LABELS[e.type] || e.type)}</td><td style="padding:8px; border-bottom:1px solid #eee;">${escapeHtml(e.subject)}</td><td style="padding:8px; border-bottom:1px solid #eee;">${formatSentAt(e.sent_at)}</td><td style="padding:8px; border-bottom:1px solid #eee;">${actions}</td></tr>`;
+          return `<tr><td style="padding:8px; border-bottom:1px solid #eee;"><input type="checkbox" class="email-row-check" data-id="${e.id}"></td><td style="padding:8px; border-bottom:1px solid #eee;">${escapeHtml(e.subject)}</td><td style="padding:8px; border-bottom:1px solid #eee;">${formatSentAt(e.sent_at)}</td><td style="padding:8px; border-bottom:1px solid #eee;">${actions}</td></tr>`;
         }).join('');
         selectAllTh.checked = false;
         selectAllTh.indeterminate = false;
