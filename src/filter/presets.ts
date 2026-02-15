@@ -106,6 +106,18 @@ const TEXT_FALSE_POSITIVES = [
   "总统日",
   "god of war",
   "战神",
+  "hardware", // "Hardware" contains "war"
+  // 地理/行政语境
+  "state capital",
+  "capital region",
+  // 商业语境
+  "venture capital",
+  "capital investment",
+  // 科技/合规语境
+  "privacy policy",
+  "cookie policy",
+  // political 误匹配
+  "apolitical",
 ];
 
 export function stripSourceFalsePositives(text: string): string {

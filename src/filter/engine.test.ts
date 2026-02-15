@@ -139,4 +139,46 @@ describe("filterNews", () => {
     expect(result).toHaveLength(1);
     expect(result[0].title).toBe("Capital city prepares for summit meeting");
   });
+
+  it("include mode: excludes weather news matching state capital", () => {
+    const items = [
+      makeItem("Valentine's Day heat breaks record in Twin Cities", "State capital region sees record temps. Minnesota weather."),
+      makeItem("Congress passes new legislation"),
+    ];
+    const result = filterNews(items, "include", ["politics"]);
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe("Congress passes new legislation");
+  });
+
+  it("include mode: excludes tech news matching privacy policy", () => {
+    const items = [
+      makeItem("iOS 26.3 Released, New Siri Snags", "Privacy policy updates. Apple adds new privacy features."),
+      makeItem("President Biden signs executive order"),
+    ];
+    const result = filterNews(items, "include", ["politics"]);
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe("President Biden signs executive order");
+  });
+
+  it("include mode: excludes gaming news matching venture capital", () => {
+    const items = [
+      makeItem("Father Of Sega Hardware Has Passed Away", "Venture capital in gaming industry. Sega Genesis creator."),
+      makeItem("Senate votes on new bill"),
+    ];
+    const result = filterNews(items, "include", ["politics"]);
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe("Senate votes on new bill");
+  });
+
+  it("include mode: keeps political news with capital city", () => {
+    const items = [makeItem("Capital city prepares for summit meeting")];
+    const result = filterNews(items, "include", ["politics"]);
+    expect(result).toHaveLength(1);
+  });
+
+  it("include mode: keeps political news with military hardware", () => {
+    const items = [makeItem("Military hardware deployed to region", "Defense ministry confirms.")];
+    const result = filterNews(items, "include", ["politics"]);
+    expect(result).toHaveLength(1);
+  });
 });
