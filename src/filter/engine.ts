@@ -32,7 +32,8 @@ export function filterNews(
 
   return items.filter((item) => {
     const text = textForCategoryMatch(item);
-    const hasMatch = keywords.some((kw) => text.includes(kw.toLowerCase()));
+    const matchCount = keywords.filter((kw) => text.includes(kw.toLowerCase())).length;
+    const hasMatch = mode === "include" ? matchCount >= 2 : matchCount > 0;
     if (mode === "include") {
       return hasMatch && !hasCommercialMatch(item);
     }
