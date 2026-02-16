@@ -5,6 +5,7 @@
 import cron from "node-cron";
 import { getDb, saveDb } from "../db/index.js";
 import { all, get } from "../db/query.js";
+import { upsertNewsCache, getCachedNews, cleanupExpiredCache } from "../db/cache.js";
 import { fetchAndMerge } from "../fetcher/index.js";
 import { filterNews } from "../filter/engine.js";
 import { translateBatch } from "../translate/index.js";
@@ -18,6 +19,7 @@ export interface UserToNotify {
   sources: { source_url: string; label: string }[];
   mode: "include" | "exclude";
   categories: string[];
+  fetchWindowHours: number;
 }
 
 function rowToUser(r: [number, string] | { id: number; email: string }): [number, string] {
@@ -62,23 +64,20 @@ export async function getUsersToNotify(): Promise<UserToNotify[]> {
     }
 
     const scheduleRow = await get<
-      [string, string, string, number, number] | {
-        frequency: string;
+      [number, string, string] | {
+        frequency_hours: number;
         send_time: string;
         timezone: string;
-        weekday: number;
-        day_of_month: number;
       }
     >(
       db,
-      "SELECT frequency, send_time, timezone, weekday, day_of_month FROM user_schedules WHERE user_id = ?",
+      "SELECT COALESCE(frequency_hours, 24), send_time, timezone FROM user_schedules WHERE user_id = ?",
       [userId]
     );
-    const frequency = (Array.isArray(scheduleRow) ? scheduleRow?.[0] : scheduleRow?.frequency) ?? "daily";
+    const frequencyHours = (Array.isArray(scheduleRow) ? scheduleRow?.[0] : scheduleRow?.frequency_hours) ?? 24;
     const sendTime = (Array.isArray(scheduleRow) ? scheduleRow?.[1] : scheduleRow?.send_time) ?? "06:00";
     const timezone = (Array.isArray(scheduleRow) ? scheduleRow?.[2] : scheduleRow?.timezone) ?? "Asia/Shanghai";
-    const weekday = (Array.isArray(scheduleRow) ? scheduleRow?.[3] : scheduleRow?.weekday) ?? 1;
-    const dayOfMonth = (Array.isArray(scheduleRow) ? scheduleRow?.[4] : scheduleRow?.day_of_month) ?? 1;
+    const fetchWindowHours = frequencyHours;
 
     const [h, m] = sendTime.split(":").map(Number);
     const userDate = new Date(
@@ -86,22 +85,25 @@ export async function getUsersToNotify(): Promise<UserToNotify[]> {
     );
     const userHour = userDate.getHours();
     const userMin = userDate.getMinutes();
-    const userDay = userDate.getDay();
-    const userDateNum = userDate.getDate();
+    const currentMinutes = userHour * 60 + userMin;
+    const sendBaseMinutes = (h ?? 0) * 60 + (m ?? 0);
+    const intervalMinutes = frequencyHours * 60;
+    const isSendMoment =
+      frequencyHours >= 24
+        ? userHour === h && userMin === m
+        : ((currentMinutes - sendBaseMinutes + 24 * 60) % intervalMinutes) < 2;
 
-    let shouldSend = false;
-    if (frequency === "daily") {
-      shouldSend = userHour === h && userMin === m;
-    } else if (frequency === "weekly") {
-      shouldSend = userDay === weekday && userHour === h && userMin === m;
-    } else if (frequency === "biweekly") {
-      const weekNum = Math.floor(Date.now() / (7 * 24 * 60 * 60 * 1000));
-      shouldSend =
-        userDay === weekday && userHour === h && userMin === m && weekNum % 2 === 0;
-    } else if (frequency === "monthly") {
-      shouldSend =
-        userDateNum === dayOfMonth && userHour === h && userMin === m;
-    }
+    const lastDigestRow = await get<[number] | { sent_at: number }>(
+      db,
+      "SELECT sent_at FROM sent_emails WHERE user_id = ? AND type = 'digest' ORDER BY sent_at DESC LIMIT 1",
+      [userId]
+    );
+    const lastSentAt = lastDigestRow
+      ? (Array.isArray(lastDigestRow) ? lastDigestRow[0] : lastDigestRow.sent_at)
+      : 0;
+    const minIntervalSec = frequencyHours * 3600;
+    const elapsedSec = Math.floor(Date.now() / 1000) - lastSentAt;
+    const shouldSend = isSendMoment && (lastSentAt === 0 || elapsedSec >= minIntervalSec);
 
     if (shouldSend) {
       result.push({
@@ -113,10 +115,38 @@ export async function getUsersToNotify(): Promise<UserToNotify[]> {
         }),
         mode,
         categories,
+        fetchWindowHours,
       });
     }
   }
 
+  return result;
+}
+
+/** All verified users with at least one source (for 8h fetch task). */
+export async function getUsersWithSources(): Promise<{ userId: number; sources: { source_url: string; label: string }[] }[]> {
+  const db = await getDb();
+  const users = await all<[number] | { id: number }>(
+    db,
+    "SELECT id FROM users WHERE verified_at IS NOT NULL"
+  );
+  const result: { userId: number; sources: { source_url: string; label: string }[] }[] = [];
+  for (const u of users) {
+    const userId = Array.isArray(u) ? u[0] : u.id;
+    const sourcesRows = await all<[string, string] | { source_url: string; label: string }>(
+      db,
+      "SELECT source_url, label FROM user_sources WHERE user_id = ?",
+      [userId]
+    );
+    if (sourcesRows.length === 0) continue;
+    result.push({
+      userId,
+      sources: sourcesRows.map((r) => {
+        const [source_url, label] = rowToSource(r);
+        return { source_url, label };
+      }),
+    });
+  }
   return result;
 }
 
@@ -158,6 +188,16 @@ export async function getUserForDigest(userId: number): Promise<UserToNotify | n
     // ignore
   }
 
+  const scheduleRow = await get<
+    [number] | { frequency_hours: number }
+  >(
+    db,
+    "SELECT COALESCE(frequency_hours, 24) FROM user_schedules WHERE user_id = ?",
+    [uid]
+  );
+  const frequencyHours = (Array.isArray(scheduleRow) ? scheduleRow?.[0] : scheduleRow?.frequency_hours) ?? 24;
+  const fetchWindowHours = frequencyHours;
+
   return {
     userId: uid,
     email,
@@ -167,6 +207,7 @@ export async function getUserForDigest(userId: number): Promise<UserToNotify | n
     }),
     mode,
     categories,
+    fetchWindowHours,
   };
 }
 
@@ -177,8 +218,17 @@ function getDigestSubject(): string {
 }
 
 export async function processUser(user: UserToNotify): Promise<void> {
-  const items = await fetchAndMerge(user.sources);
+  const db = await getDb();
+  let items = await getCachedNews(db, user.userId, user.fetchWindowHours);
+  if (items.length === 0) {
+    const fetched = await fetchAndMerge(user.sources, {
+      fetchWindowHours: user.fetchWindowHours > 0 ? user.fetchWindowHours : undefined,
+    });
+    await upsertNewsCache(db, user.userId, fetched);
+    items = fetched;
+  }
   const filtered = filterNews(items, user.mode, user.categories);
+  console.log(`Cached ${items.length} items, filtered to ${filtered.length}`);
   const translated = await translateBatch(filtered);
   const htmlTable = buildDigestTable(translated);
   const subject = getDigestSubject();
@@ -198,12 +248,41 @@ export async function runTick(): Promise<void> {
   }
 }
 
+/** Per-user fetch: fetch all sources for each user, write to news_cache. No date filter. */
+export async function runFetchTask(): Promise<void> {
+  const users = await getUsersWithSources();
+  const db = await getDb();
+  for (const { userId, sources } of users) {
+    try {
+      const items = await fetchAndMerge(sources, undefined);
+      await upsertNewsCache(db, userId, items);
+      console.log(`[Fetch] user ${userId}: ${items.length} items cached`);
+    } catch (err) {
+      console.error(`[Fetch] user ${userId} failed:`, err);
+    }
+  }
+}
+
+/** Delete news_cache entries older than 7 days. */
+export async function runCleanupTask(): Promise<void> {
+  const cutoffSec = Math.floor((Date.now() - 7 * 24 * 3600 * 1000) / 1000);
+  const db = await getDb();
+  await cleanupExpiredCache(db, cutoffSec);
+  console.log("[Cleanup] expired news_cache entries removed");
+}
+
 async function main(): Promise<void> {
   await getDb();
   cron.schedule("* * * * *", () => {
     runTick().catch(console.error);
   });
-  console.log("Cron started. Running every minute.");
+  cron.schedule("0 */8 * * *", () => {
+    runFetchTask().catch(console.error);
+  });
+  cron.schedule("0 3 * * *", () => {
+    runCleanupTask().catch(console.error);
+  });
+  console.log("Cron started. Minute tick, 8h fetch, daily cleanup.");
 }
 
 main().catch(console.error);

@@ -1,5 +1,6 @@
 /**
- * User schedule CRUD (frequency, send_time, timezone, weekday, day_of_month).
+ * User schedule CRUD (frequency_hours, send_time, timezone).
+ * frequency_hours = send interval and fetch window (e.g. 4 = every 4h, past 4h news).
  */
 
 import { Router } from "express";
@@ -8,11 +9,9 @@ import { run, get } from "../db/query.js";
 import { requireAuth } from "./middleware.js";
 
 const DEFAULT_SCHEDULE = {
-  frequency: "daily",
+  frequency_hours: 24,
   send_time: "06:00",
   timezone: "Asia/Shanghai",
-  weekday: 1,
-  day_of_month: 1,
 };
 
 export const scheduleRouter = Router();
@@ -22,52 +21,60 @@ scheduleRouter.get("/", async (req, res) => {
   const userId = req.userId!;
   const db = await getDb();
   const row = await get<
-    [string, string, string, number, number] | {
-      frequency: string;
+    [number, string, string] | {
+      frequency_hours: number;
       send_time: string;
       timezone: string;
-      weekday: number;
-      day_of_month: number;
     }
   >(
     db,
-    "SELECT frequency, send_time, timezone, weekday, day_of_month FROM user_schedules WHERE user_id = ?",
+    "SELECT COALESCE(frequency_hours, 24), send_time, timezone FROM user_schedules WHERE user_id = ?",
     [userId]
   );
   if (!row) {
     res.json({ ...DEFAULT_SCHEDULE, hasSchedule: false });
     return;
   }
-  const frequency = Array.isArray(row) ? row[0] : row.frequency;
+  const frequency_hours = Array.isArray(row) ? (row[0] ?? 24) : (row.frequency_hours ?? 24);
   const send_time = Array.isArray(row) ? row[1] : row.send_time;
   const timezone = Array.isArray(row) ? row[2] : row.timezone;
-  const weekday = Array.isArray(row) ? row[3] : row.weekday;
-  const day_of_month = Array.isArray(row) ? row[4] : row.day_of_month;
-  res.json({ frequency, send_time, timezone, weekday, day_of_month, hasSchedule: true });
+  res.json({ frequency_hours, send_time, timezone, hasSchedule: true });
 });
 
 scheduleRouter.put("/", async (req, res) => {
   const userId = req.userId!;
-  const { frequency, send_time, timezone, weekday, day_of_month } = req.body ?? {};
-  const freq = frequency ?? DEFAULT_SCHEDULE.frequency;
-  const validFreq = ["daily", "weekly", "biweekly", "monthly"].includes(freq);
-  if (!validFreq) {
-    res.status(400).json({ error: "frequency must be daily, weekly, biweekly, or monthly" });
-    return;
-  }
+  const { frequency_hours, send_time, timezone } = req.body ?? {};
+  const fh =
+    typeof frequency_hours === "number" && frequency_hours >= 1 && frequency_hours <= 2160
+      ? Math.floor(frequency_hours)
+      : DEFAULT_SCHEDULE.frequency_hours;
   const sendTime = send_time ?? DEFAULT_SCHEDULE.send_time;
   const tz = timezone ?? DEFAULT_SCHEDULE.timezone;
-  const wd = typeof weekday === "number" ? weekday : DEFAULT_SCHEDULE.weekday;
-  const dom = typeof day_of_month === "number" ? day_of_month : DEFAULT_SCHEDULE.day_of_month;
 
   const db = await getDb();
-  await run(
-    db,
-    `INSERT INTO user_schedules (user_id, frequency, send_time, timezone, weekday, day_of_month) VALUES (?, ?, ?, ?, ?, ?)
-     ON CONFLICT(user_id) DO UPDATE SET frequency = excluded.frequency, send_time = excluded.send_time,
-       timezone = excluded.timezone, weekday = excluded.weekday, day_of_month = excluded.day_of_month`,
-    [userId, freq, sendTime, tz, wd, dom]
-  );
-  saveDb();
-  res.json({ frequency: freq, send_time: sendTime, timezone: tz, weekday: wd, day_of_month: dom });
+  const isPg = typeof (db as { query?: unknown }).query === "function";
+  if (isPg) {
+    await (db as { query: (s: string, p?: unknown[]) => Promise<unknown> }).query(
+      `INSERT INTO user_schedules (user_id, frequency_hours, send_time, timezone, frequency, weekday, day_of_month, fetch_window_hours)
+       VALUES ($1, $2, $3, $4, 'daily', 1, 1, $5)
+       ON CONFLICT(user_id) DO UPDATE SET frequency_hours = EXCLUDED.frequency_hours,
+         send_time = EXCLUDED.send_time, timezone = EXCLUDED.timezone,
+         frequency = EXCLUDED.frequency, weekday = EXCLUDED.weekday, day_of_month = EXCLUDED.day_of_month,
+         fetch_window_hours = EXCLUDED.fetch_window_hours`,
+      [userId, fh, sendTime, tz, fh]
+    );
+  } else {
+    await run(
+      db,
+      `INSERT INTO user_schedules (user_id, frequency_hours, send_time, timezone, frequency, weekday, day_of_month, fetch_window_hours)
+       VALUES (?, ?, ?, ?, 'daily', 1, 1, ?)
+       ON CONFLICT(user_id) DO UPDATE SET frequency_hours = excluded.frequency_hours,
+         send_time = excluded.send_time, timezone = excluded.timezone,
+         frequency = excluded.frequency, weekday = excluded.weekday, day_of_month = excluded.day_of_month,
+         fetch_window_hours = excluded.fetch_window_hours`,
+      [userId, fh, sendTime, tz, fh]
+    );
+    saveDb();
+  }
+  res.json({ frequency_hours: fh, send_time: sendTime, timezone: tz });
 });

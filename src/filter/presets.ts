@@ -29,6 +29,16 @@ export const FILTER_PRESETS: Record<string, { label: string; keywords: string[] 
       "parliament",
       "minister",
       "political",
+      "dhs",
+      "ice",
+      "cbp",
+      "fbi",
+      "doj",
+      "scandal",
+      "investigation",
+      "indictment",
+      "protest",
+      "demonstration",
       "政治",
       "选举",
       "政府",
@@ -37,6 +47,10 @@ export const FILTER_PRESETS: Record<string, { label: string; keywords: string[] 
       "议会",
       "外交",
       "军事",
+      "丑闻",
+      "调查",
+      "起诉",
+      "抗议",
     ],
   },
   tech: {
@@ -116,6 +130,12 @@ const TEXT_FALSE_POSITIVES = [
   // 科技/合规语境
   "privacy policy",
   "cookie policy",
+  "content policy",
+  "security policy",
+  // 政府/安全语境（科技漏洞、浏览器警告）
+  "政府向 chrome 用户发出",
+  "政府向用户发出警报",
+  "印度政府警告",
   // political 误匹配
   "apolitical",
 ];

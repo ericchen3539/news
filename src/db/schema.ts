@@ -30,15 +30,17 @@ CREATE TABLE IF NOT EXISTS user_filters (
   created_at INTEGER NOT NULL DEFAULT (unixepoch())
 );
 
--- User schedule (frequency, send time, timezone)
+-- User schedule: frequency_hours = send interval (hours), fetch window = frequency_hours
 CREATE TABLE IF NOT EXISTS user_schedules (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
-  frequency TEXT NOT NULL CHECK (frequency IN ('daily', 'weekly', 'biweekly', 'monthly')),
+  frequency_hours INTEGER NOT NULL DEFAULT 24 CHECK (frequency_hours >= 1 AND frequency_hours <= 2160),
   send_time TEXT NOT NULL DEFAULT '06:00',
   timezone TEXT NOT NULL DEFAULT 'Asia/Shanghai',
+  frequency TEXT DEFAULT 'daily',
   weekday INTEGER DEFAULT 1,
   day_of_month INTEGER DEFAULT 1,
+  fetch_window_hours INTEGER DEFAULT 24,
   created_at INTEGER NOT NULL DEFAULT (unixepoch())
 );
 
@@ -61,7 +63,22 @@ CREATE TABLE IF NOT EXISTS sent_emails (
   sent_at INTEGER NOT NULL DEFAULT (unixepoch())
 );
 
+-- News cache: per-user fetched items for digest (fetched every 8h)
+CREATE TABLE IF NOT EXISTS news_cache (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  link TEXT NOT NULL,
+  title TEXT NOT NULL DEFAULT '',
+  summary TEXT NOT NULL DEFAULT '',
+  source_url TEXT NOT NULL DEFAULT '',
+  source_label TEXT NOT NULL DEFAULT '',
+  pub_date INTEGER NOT NULL,
+  fetched_at INTEGER NOT NULL DEFAULT (unixepoch()),
+  UNIQUE(user_id, link)
+);
+
 CREATE INDEX IF NOT EXISTS idx_user_sources_user ON user_sources(user_id);
 CREATE INDEX IF NOT EXISTS idx_verification_tokens_token ON verification_tokens(token);
 CREATE INDEX IF NOT EXISTS idx_sent_emails_user_id ON sent_emails(user_id);
+CREATE INDEX IF NOT EXISTS idx_news_cache_user_pub ON news_cache(user_id, pub_date);
 `;

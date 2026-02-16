@@ -181,4 +181,29 @@ describe("filterNews", () => {
     const result = filterNews(items, "include", ["politics"]);
     expect(result).toHaveLength(1);
   });
+
+  it("include mode: excludes tech news matching content policy", () => {
+    const items = [
+      makeItem("YouTube adds new hurdles for ad blockers", "Content policy updates. Ad blocker battle continues."),
+      makeItem("Congress passes new legislation"),
+    ];
+    const result = filterNews(items, "include", ["politics"]);
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe("Congress passes new legislation");
+  });
+
+  it("include mode: excludes security news matching 政府警告", () => {
+    const items = [
+      makeItem("Chrome Zero-Day Under Active Attack", "政府向 Chrome 用户发出高严重性警报. 印度政府警告存在高风险缺陷."),
+      makeItem("Senate votes on new bill"),
+    ];
+    const result = filterNews(items, "include", ["politics"]);
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe("Senate votes on new bill");
+  });
+
+  it("include mode: keeps DHS/ICE news", () => {
+    const items = [makeItem("DHS shuts down after funding lapse", "Department of Homeland Security.")];
+    expect(filterNews(items, "include", ["politics"])).toHaveLength(1);
+  });
 });
