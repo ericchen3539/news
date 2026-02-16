@@ -5,7 +5,7 @@
  */
 
 import { Router } from "express";
-import { runTick } from "../cron/run.js";
+import { runTick, runFetchTask } from "../cron/run.js";
 
 export const cronRouter = Router();
 
@@ -45,5 +45,21 @@ cronRouter.get("/digest", async (req, res) => {
         return;
       }
     }
+  }
+});
+
+cronRouter.get("/fetch", async (req, res) => {
+  const authHeader = req.headers.authorization;
+  const expected = process.env.CRON_SECRET;
+  if (!expected || authHeader !== `Bearer ${expected}`) {
+    res.status(401).json({ success: false, error: "Unauthorized" });
+    return;
+  }
+  try {
+    await runFetchTask();
+    res.json({ success: true, message: "Fetch task completed" });
+  } catch (err) {
+    console.error("[Cron] runFetchTask failed:", err);
+    res.status(500).json({ success: false, error: "Fetch task failed" });
   }
 });

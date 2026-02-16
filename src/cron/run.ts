@@ -5,7 +5,7 @@
 import cron from "node-cron";
 import { getDb, saveDb } from "../db/index.js";
 import { all, get } from "../db/query.js";
-import { upsertNewsCache, getCachedNews, cleanupExpiredCache } from "../db/cache.js";
+import { upsertNewsCache, getCachedNews, getMostRecentFetchedAt, cleanupExpiredCache } from "../db/cache.js";
 import { fetchAndMerge } from "../fetcher/index.js";
 import { filterNews } from "../filter/engine.js";
 import { translateBatch } from "../translate/index.js";
@@ -20,6 +20,8 @@ export interface UserToNotify {
   mode: "include" | "exclude";
   categories: string[];
   fetchWindowHours: number;
+  /** Unix seconds of last digest sent; 0 = never sent. Used for pub_date > lastSentAt dedup. */
+  lastSentAt?: number;
 }
 
 function rowToUser(r: [number, string] | { id: number; email: string }): [number, string] {
@@ -116,6 +118,7 @@ export async function getUsersToNotify(): Promise<UserToNotify[]> {
         mode,
         categories,
         fetchWindowHours,
+        lastSentAt,
       });
     }
   }
@@ -198,6 +201,15 @@ export async function getUserForDigest(userId: number): Promise<UserToNotify | n
   const frequencyHours = (Array.isArray(scheduleRow) ? scheduleRow?.[0] : scheduleRow?.frequency_hours) ?? 24;
   const fetchWindowHours = frequencyHours;
 
+  const lastDigestRow = await get<[number] | { sent_at: number }>(
+    db,
+    "SELECT sent_at FROM sent_emails WHERE user_id = ? AND type = 'digest' ORDER BY sent_at DESC LIMIT 1",
+    [uid]
+  );
+  const lastSentAt = lastDigestRow
+    ? (Array.isArray(lastDigestRow) ? lastDigestRow[0] : lastDigestRow.sent_at)
+    : 0;
+
   return {
     userId: uid,
     email,
@@ -208,6 +220,7 @@ export async function getUserForDigest(userId: number): Promise<UserToNotify | n
     mode,
     categories,
     fetchWindowHours,
+    lastSentAt,
   };
 }
 
@@ -219,13 +232,22 @@ function getDigestSubject(): string {
 
 export async function processUser(user: UserToNotify): Promise<void> {
   const db = await getDb();
-  let items = await getCachedNews(db, user.userId, user.fetchWindowHours);
-  if (items.length === 0) {
+  const lastSentAt = user.lastSentAt ?? 0;
+  let items = await getCachedNews(db, user.userId, user.fetchWindowHours, lastSentAt);
+
+  const lastFetchedAt = await getMostRecentFetchedAt(db, user.userId);
+  const freshnessThresholdSec = (user.fetchWindowHours / 2) * 3600;
+  const cacheStale = lastFetchedAt > 0 && Math.floor(Date.now() / 1000) - lastFetchedAt > freshnessThresholdSec;
+
+  if (items.length === 0 || cacheStale) {
     const fetched = await fetchAndMerge(user.sources, {
       fetchWindowHours: user.fetchWindowHours > 0 ? user.fetchWindowHours : undefined,
     });
     await upsertNewsCache(db, user.userId, fetched);
-    items = fetched;
+    items =
+      lastSentAt > 0
+        ? fetched.filter((item) => !item.pubDate || item.pubDate / 1000 > lastSentAt)
+        : fetched;
   }
   const filtered = filterNews(items, user.mode, user.categories);
   console.log(`Cached ${items.length} items, filtered to ${filtered.length}`);

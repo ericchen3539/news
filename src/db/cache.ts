@@ -4,7 +4,7 @@
 
 import type { NewsItem } from "../fetcher/index.js";
 import { saveDb } from "./index.js";
-import { run, all } from "./query.js";
+import { run, all, get } from "./query.js";
 
 type Db = Awaited<ReturnType<typeof import("./index.js").getDb>>;
 
@@ -51,22 +51,44 @@ export async function upsertNewsCache(
   if (!isPg) saveDb();
 }
 
+/**
+ * Returns the most recent fetched_at (unix seconds) for a user's cache, or 0 if empty.
+ */
+export async function getMostRecentFetchedAt(db: Db, userId: number): Promise<number> {
+  const row = await get<[number] | { max_fetched: number }>(
+    db,
+    "SELECT MAX(fetched_at) AS max_fetched FROM news_cache WHERE user_id = ?",
+    [userId]
+  );
+  if (!row) return 0;
+  const val = Array.isArray(row) ? row[0] : (row as { max_fetched: number }).max_fetched;
+  return typeof val === "number" && !Number.isNaN(val) ? val : 0;
+}
+
 /** Fetch cached items for a user within the given time window (hours). */
 export async function getCachedNews(
   db: Db,
   userId: number,
-  fetchWindowHours: number
+  fetchWindowHours: number,
+  lastSentAtSec?: number
 ): Promise<NewsItem[]> {
   const cutoffSec =
     fetchWindowHours > 0
       ? Math.floor((Date.now() - fetchWindowHours * 3600 * 1000) / 1000)
       : 0;
+  const useLastSentAt = lastSentAtSec != null && lastSentAtSec > 0;
 
-  const rows = await all<[string, string, string, string] | { link: string; title: string; summary: string; source_label: string }>(
-    db,
-    "SELECT link, title, summary, source_label FROM news_cache WHERE user_id = ? AND pub_date >= ? ORDER BY pub_date DESC",
-    [userId, cutoffSec]
-  );
+  const rows = useLastSentAt
+    ? await all<[string, string, string, string] | { link: string; title: string; summary: string; source_label: string }>(
+        db,
+        "SELECT link, title, summary, source_label FROM news_cache WHERE user_id = ? AND pub_date > ? AND pub_date >= ? ORDER BY pub_date DESC",
+        [userId, lastSentAtSec!, cutoffSec]
+      )
+    : await all<[string, string, string, string] | { link: string; title: string; summary: string; source_label: string }>(
+        db,
+        "SELECT link, title, summary, source_label FROM news_cache WHERE user_id = ? AND pub_date >= ? ORDER BY pub_date DESC",
+        [userId, cutoffSec]
+      );
 
   return rows.map((r) => {
     const link = Array.isArray(r) ? r[0] : r.link;

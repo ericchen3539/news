@@ -1,14 +1,1 @@
-{
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "functions": {
-    "src/index.ts": {
-      "maxDuration": 60
-    }
-  },
-  "crons": [
-    {
-      "path": "/api/cron/digest",
-      "schedule": "* * * * *"
-    }
-  ]
-}
+{"$schema":"https://openapi.vercel.sh/vercel.json","functions":{"src/index.ts":{"maxDuration":60}},"crons":[{"path":"/api/cron/digest","schedule":"* * * * *"},{"path":"/api/cron/fetch","schedule":"0 */6 * * *"}]}
