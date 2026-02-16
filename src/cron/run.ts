@@ -126,14 +126,14 @@ export async function getUsersToNotify(): Promise<UserToNotify[]> {
   return result;
 }
 
-/** All verified users with at least one source (for 8h fetch task). */
-export async function getUsersWithSources(): Promise<{ userId: number; sources: { source_url: string; label: string }[] }[]> {
+/** All verified users with at least one source (for 8h fetch task). Includes fetchWindowHours for cache scope. */
+export async function getUsersWithSources(): Promise<{ userId: number; sources: { source_url: string; label: string }[]; fetchWindowHours: number }[]> {
   const db = await getDb();
   const users = await all<[number] | { id: number }>(
     db,
     "SELECT id FROM users WHERE verified_at IS NOT NULL"
   );
-  const result: { userId: number; sources: { source_url: string; label: string }[] }[] = [];
+  const result: { userId: number; sources: { source_url: string; label: string }[]; fetchWindowHours: number }[] = [];
   for (const u of users) {
     const userId = Array.isArray(u) ? u[0] : u.id;
     const sourcesRows = await all<[string, string] | { source_url: string; label: string }>(
@@ -142,12 +142,19 @@ export async function getUsersWithSources(): Promise<{ userId: number; sources: 
       [userId]
     );
     if (sourcesRows.length === 0) continue;
+    const scheduleRow = await get<[number] | { frequency_hours: number }>(
+      db,
+      "SELECT COALESCE(frequency_hours, 24) FROM user_schedules WHERE user_id = ?",
+      [userId]
+    );
+    const fetchWindowHours = (Array.isArray(scheduleRow) ? scheduleRow?.[0] : scheduleRow?.frequency_hours) ?? 24;
     result.push({
       userId,
       sources: sourcesRows.map((r) => {
         const [source_url, label] = rowToSource(r);
         return { source_url, label };
       }),
+      fetchWindowHours,
     });
   }
   return result;
@@ -251,6 +258,10 @@ export async function processUser(user: UserToNotify): Promise<void> {
   }
   const filtered = filterNews(items, user.mode, user.categories);
   console.log(`Cached ${items.length} items, filtered to ${filtered.length}`);
+  if (filtered.length === 0) {
+    console.log(`[Digest] Skipped empty digest for ${user.email}`);
+    return;
+  }
   const translated = await translateBatch(filtered);
   const htmlTable = buildDigestTable(translated);
   const subject = getDigestSubject();
@@ -270,13 +281,15 @@ export async function runTick(): Promise<void> {
   }
 }
 
-/** Per-user fetch: fetch all sources for each user, write to news_cache. No date filter. */
+/** Per-user fetch: fetch all sources for each user, write to news_cache. Uses fetchWindowHours to limit cache scope. */
 export async function runFetchTask(): Promise<void> {
   const users = await getUsersWithSources();
   const db = await getDb();
-  for (const { userId, sources } of users) {
+  for (const { userId, sources, fetchWindowHours } of users) {
     try {
-      const items = await fetchAndMerge(sources, undefined);
+      const items = await fetchAndMerge(sources, {
+        fetchWindowHours: fetchWindowHours > 0 ? fetchWindowHours : undefined,
+      });
       await upsertNewsCache(db, userId, items);
       console.log(`[Fetch] user ${userId}: ${items.length} items cached`);
     } catch (err) {

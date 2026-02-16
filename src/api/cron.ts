@@ -55,11 +55,22 @@ cronRouter.get("/fetch", async (req, res) => {
     res.status(401).json({ success: false, error: "Unauthorized" });
     return;
   }
-  try {
-    await runFetchTask();
-    res.json({ success: true, message: "Fetch task completed" });
-  } catch (err) {
-    console.error("[Cron] runFetchTask failed:", err);
-    res.status(500).json({ success: false, error: "Fetch task failed" });
+  const maxAttempts = 2;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      await runFetchTask();
+      res.json({ success: true, message: "Fetch task completed" });
+      return;
+    } catch (err) {
+      const shouldRetry = attempt < maxAttempts && isNeonConnectionError(err);
+      if (shouldRetry) {
+        console.warn(`[Cron] Fetch attempt ${attempt} failed (Neon connection), retrying:`, err instanceof Error ? err.message : err);
+        await new Promise((r) => setTimeout(r, 800));
+      } else {
+        console.error("[Cron] runFetchTask failed:", err);
+        res.status(500).json({ success: false, error: "Fetch task failed" });
+        return;
+      }
+    }
   }
 });

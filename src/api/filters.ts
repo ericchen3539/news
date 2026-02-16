@@ -36,6 +36,10 @@ filtersRouter.put("/", async (req, res) => {
     return;
   }
   const categoriesArr = Array.isArray(categories) ? categories : [];
+  if (mode === "include" && categoriesArr.length === 0) {
+    res.status(400).json({ error: "包含模式必须至少选择一个类别" });
+    return;
+  }
   const db = await getDb();
   await run(
     db,
