@@ -118,7 +118,19 @@
       <h2>新闻源</h2>
       <p class="section-hint">订阅多个主题可获取更多新闻（每主题最多约 100 条，合并去重后可达数百条）。</p>
       <p class="section-title">快捷添加 Google News：</p>
-      <div class="checkbox-group" id="source-quick-add"></div>
+      <div class="checkbox-group" id="source-quick-add">
+        <button type="button" class="btn-quick-add" data-url="news.google.com" data-label="Home">+ Home</button>
+        <button type="button" class="btn-quick-add" data-url="news.google.com" data-label="U.S.">+ U.S.</button>
+        <button type="button" class="btn-quick-add" data-url="news.google.com" data-label="World">+ World</button>
+        <button type="button" class="btn-quick-add" data-url="news.google.com" data-label="Nation">+ Nation</button>
+        <button type="button" class="btn-quick-add" data-url="news.google.com" data-label="Politics">+ Politics</button>
+        <button type="button" class="btn-quick-add" data-url="news.google.com" data-label="Business">+ Business</button>
+        <button type="button" class="btn-quick-add" data-url="news.google.com" data-label="Technology">+ Technology</button>
+        <button type="button" class="btn-quick-add" data-url="news.google.com" data-label="Entertainment">+ Entertainment</button>
+        <button type="button" class="btn-quick-add" data-url="news.google.com" data-label="Sports">+ Sports</button>
+        <button type="button" class="btn-quick-add" data-url="news.google.com" data-label="Science">+ Science</button>
+        <button type="button" class="btn-quick-add" data-url="news.google.com" data-label="Health">+ Health</button>
+      </div>
       <div class="source-summary" id="source-summary"></div>
       <ul class="source-list" id="source-list"></ul>
     </section>
@@ -130,7 +142,13 @@
         <option value="exclude">排除（匹配以下类别则剔除）</option>
       </select>
       <label>预设类别（多选）</label>
-      <div class="checkbox-group" id="filter-categories"></div>
+      <div class="checkbox-group" id="filter-categories">
+        <label><input type="checkbox" value="politics"> 政治</label>
+        <label><input type="checkbox" value="tech"> 科技</label>
+        <label><input type="checkbox" value="sports"> 体育</label>
+        <label><input type="checkbox" value="business"> 财经</label>
+        <label><input type="checkbox" value="entertainment"> 娱乐</label>
+      </div>
       <button id="btn-save-filters">保存</button>
       <div class="config-summary" id="filter-summary"></div>
       <div id="filter-msg" class="hidden"></div>
@@ -520,18 +538,20 @@
       }
 
       const quickAdd = document.getElementById('source-quick-add');
-      const gnews = sourcePresets?.googleNews || FALLBACK_GOOGLE_NEWS;
-      quickAdd.innerHTML = gnews.map(p => `
-        <button type="button" class="btn-quick-add" data-url="news.google.com" data-label="${escapeHtml(p.label)}">+ ${escapeHtml(p.label)}</button>
-      `).join('');
-      quickAdd.querySelectorAll('.btn-quick-add').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          try {
-            await api('/sources', { method: 'POST', body: JSON.stringify({ source_url: btn.dataset.url, label: btn.dataset.label }) });
-            loadConfig();
-          } catch (e) { alert(e.message); }
+      const gnews = (sourcePresets?.googleNews?.length) ? sourcePresets.googleNews : FALLBACK_GOOGLE_NEWS;
+      if (quickAdd) {
+        quickAdd.innerHTML = gnews.map(p => `
+          <button type="button" class="btn-quick-add" data-url="news.google.com" data-label="${escapeHtml(p.label)}">+ ${escapeHtml(p.label)}</button>
+        `).join('');
+        quickAdd.querySelectorAll('.btn-quick-add').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            try {
+              await api('/sources', { method: 'POST', body: JSON.stringify({ source_url: btn.dataset.url, label: btn.dataset.label }) });
+              loadConfig();
+            } catch (e) { alert(e.message); }
+          });
         });
-      });
+      }
 
       const summary = document.getElementById('source-summary');
       summary.textContent = !sourcesOk ? '加载失败，请刷新页面或重新登录后重试' : sources.length ? `已添加 ${sources.length} 个新闻源：` : '暂无新闻源，请在上方添加。';
@@ -553,14 +573,16 @@
 
       document.getElementById('filter-mode').value = filters.mode || 'include';
       const filterCategoriesDiv = document.getElementById('filter-categories');
-      const presetsToUse = presets.length ? presets : FALLBACK_FILTER_PRESETS;
-      filterCategoriesDiv.innerHTML = presetsToUse.map(p => `
-        <label><input type="checkbox" value="${p.id}"> ${p.label}</label>
-      `).join('');
-      (filters.categories || []).forEach(id => {
-        const cb = document.querySelector(`#filter-categories input[value="${id}"]`);
-        if (cb) cb.checked = true;
-      });
+      const presetsToUse = (presets?.length) ? presets : FALLBACK_FILTER_PRESETS;
+      if (filterCategoriesDiv) {
+        filterCategoriesDiv.innerHTML = presetsToUse.map(p => `
+          <label><input type="checkbox" value="${p.id}"> ${p.label}</label>
+        `).join('');
+        (filters.categories || []).forEach(id => {
+          const cb = document.querySelector(`#filter-categories input[value="${id}"]`);
+          if (cb) cb.checked = true;
+        });
+      }
       const presetMap = Object.fromEntries(presetsToUse.map(p => [p.id, p.label]));
       const filterLabels = (filters.categories || []).map(id => presetMap[id] || id).filter(Boolean);
       const filterModeText = (filters.mode || 'include') === 'include' ? '包含' : '排除';
