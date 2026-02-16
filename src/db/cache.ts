@@ -65,30 +65,22 @@ export async function getMostRecentFetchedAt(db: Db, userId: number): Promise<nu
   return typeof val === "number" && !Number.isNaN(val) ? val : 0;
 }
 
-/** Fetch cached items for a user within the given time window (hours). */
+/** Fetch cached items for a user within the given time window (hours). Always uses full window. */
 export async function getCachedNews(
   db: Db,
   userId: number,
-  fetchWindowHours: number,
-  lastSentAtSec?: number
+  fetchWindowHours: number
 ): Promise<NewsItem[]> {
   const cutoffSec =
     fetchWindowHours > 0
       ? Math.floor((Date.now() - fetchWindowHours * 3600 * 1000) / 1000)
       : 0;
-  const useLastSentAt = lastSentAtSec != null && lastSentAtSec > 0;
 
-  const rows = useLastSentAt
-    ? await all<[string, string, string, string] | { link: string; title: string; summary: string; source_label: string }>(
-        db,
-        "SELECT link, title, summary, source_label FROM news_cache WHERE user_id = ? AND pub_date > ? AND pub_date >= ? ORDER BY pub_date DESC",
-        [userId, lastSentAtSec!, cutoffSec]
-      )
-    : await all<[string, string, string, string] | { link: string; title: string; summary: string; source_label: string }>(
-        db,
-        "SELECT link, title, summary, source_label FROM news_cache WHERE user_id = ? AND pub_date >= ? ORDER BY pub_date DESC",
-        [userId, cutoffSec]
-      );
+  const rows = await all<[string, string, string, string] | { link: string; title: string; summary: string; source_label: string }>(
+    db,
+    "SELECT link, title, summary, source_label FROM news_cache WHERE user_id = ? AND pub_date >= ? ORDER BY pub_date DESC",
+    [userId, cutoffSec]
+  );
 
   return rows.map((r) => {
     const link = Array.isArray(r) ? r[0] : r.link;

@@ -32,8 +32,12 @@ devRouter.post("/send-digest-now", async (req, res) => {
   }
 
   try {
-    await processUser(user);
-    res.json({ message: `Digest sent to ${user.email}` });
+    const { sent } = await processUser(user);
+    if (sent) {
+      res.json({ message: `Digest sent to ${user.email}` });
+    } else {
+      res.json({ message: "本时段暂无符合筛选条件的新闻，未发送邮件" });
+    }
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Send failed";
     console.error("[Dev] send-digest-now failed:", err);

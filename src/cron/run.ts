@@ -20,7 +20,7 @@ export interface UserToNotify {
   mode: "include" | "exclude";
   categories: string[];
   fetchWindowHours: number;
-  /** Unix seconds of last digest sent; 0 = never sent. Used for pub_date > lastSentAt dedup. */
+  /** Unix seconds of last digest sent; 0 = never sent. Used for schedule logic only (elapsedSec >= minIntervalSec). */
   lastSentAt?: number;
 }
 
@@ -237,10 +237,9 @@ function getDigestSubject(): string {
   return `${dateStr}摘要`;
 }
 
-export async function processUser(user: UserToNotify): Promise<void> {
+export async function processUser(user: UserToNotify): Promise<{ sent: boolean }> {
   const db = await getDb();
-  const lastSentAt = user.lastSentAt ?? 0;
-  let items = await getCachedNews(db, user.userId, user.fetchWindowHours, lastSentAt);
+  let items = await getCachedNews(db, user.userId, user.fetchWindowHours);
 
   const lastFetchedAt = await getMostRecentFetchedAt(db, user.userId);
   const freshnessThresholdSec = (user.fetchWindowHours / 2) * 3600;
@@ -251,30 +250,28 @@ export async function processUser(user: UserToNotify): Promise<void> {
       fetchWindowHours: user.fetchWindowHours > 0 ? user.fetchWindowHours : undefined,
     });
     await upsertNewsCache(db, user.userId, fetched);
-    items =
-      lastSentAt > 0
-        ? fetched.filter((item) => !item.pubDate || item.pubDate / 1000 > lastSentAt)
-        : fetched;
+    items = fetched;
   }
   const filtered = filterNews(items, user.mode, user.categories);
   console.log(`Cached ${items.length} items, filtered to ${filtered.length}`);
   if (filtered.length === 0) {
-    console.log(`[Digest] Skipped empty digest for ${user.email}`);
-    return;
+    console.log(`[Digest] Skipped empty digest for ${user.email} (items=${items.length}, mode=${user.mode}, categories=${user.categories.length})`);
+    return { sent: false };
   }
   const translated = await translateBatch(filtered);
   const htmlTable = buildDigestTable(translated);
   const subject = getDigestSubject();
   const html = await sendDigestEmail(user.email, htmlTable, subject);
   await logSentEmail(user.userId, "digest", subject, html);
+  return { sent: true };
 }
 
 export async function runTick(): Promise<void> {
   const users = await getUsersToNotify();
   for (const user of users) {
     try {
-      await processUser(user);
-      console.log(`Digest sent to ${user.email}`);
+      const { sent } = await processUser(user);
+      if (sent) console.log(`Digest sent to ${user.email}`);
     } catch (err) {
       console.error(`Failed to send digest to ${user.email}:`, err);
     }

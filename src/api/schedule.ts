@@ -90,8 +90,12 @@ scheduleRouter.post("/send-now", async (req, res) => {
     return;
   }
   try {
-    await processUser(user);
-    res.json({ message: "摘要已发送，请查收邮箱" });
+    const { sent } = await processUser(user);
+    if (sent) {
+      res.json({ message: "摘要已发送，请查收邮箱" });
+    } else {
+      res.json({ message: "本时段暂无符合筛选条件的新闻，未发送邮件" });
+    }
   } catch (err) {
     const msg = err instanceof Error ? err.message : "发送失败";
     console.error("[Schedule] send-now failed:", err);
