@@ -682,15 +682,19 @@
       msg.textContent = '';
       btn.disabled = true;
       btn.textContent = '发送中...';
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 90000);
       try {
-        await api('/schedule/send-now', { method: 'POST' });
+        await api('/schedule/send-now', { method: 'POST', signal: controller.signal });
+        clearTimeout(timeoutId);
         msg.className = 'success';
         msg.textContent = '摘要已发送，请查收邮箱';
         msg.classList.remove('hidden');
         loadEmails();
       } catch (e) {
+        clearTimeout(timeoutId);
         msg.className = 'error';
-        msg.textContent = e?.message || '发送失败';
+        msg.textContent = e?.name === 'AbortError' ? '请求超时，请稍后重试' : (e?.message || '发送失败');
         msg.classList.remove('hidden');
       } finally {
         btn.disabled = false;

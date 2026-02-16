@@ -69,4 +69,6 @@ export const SCHEMA_PG_STATEMENTS = [
   `CREATE INDEX IF NOT EXISTS idx_verification_tokens_token ON verification_tokens(token)`,
   `CREATE INDEX IF NOT EXISTS idx_sent_emails_user_id ON sent_emails(user_id)`,
   `ALTER TABLE sent_emails ADD COLUMN IF NOT EXISTS content TEXT`,
+  `ALTER TABLE user_schedules ADD COLUMN IF NOT EXISTS frequency_hours INTEGER DEFAULT 24`,
+  `ALTER TABLE user_schedules ADD COLUMN IF NOT EXISTS fetch_window_hours INTEGER DEFAULT 24`,
 ];
