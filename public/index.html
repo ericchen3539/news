@@ -547,24 +547,25 @@
       }
 
       const summary = document.getElementById('source-summary');
-      summary.textContent = !sourcesOk ? '加载失败，请刷新页面或重新登录后重试' : sources.length ? `已添加 ${sources.length} 个新闻源：` : '暂无新闻源，请在上方添加。';
+      if (summary) summary.textContent = !sourcesOk ? '加载失败，请刷新页面或重新登录后重试' : sources.length ? `已添加 ${sources.length} 个新闻源：` : '暂无新闻源，请在上方添加。';
 
       const list = document.getElementById('source-list');
-      const listHtml = sources.length ? sources.map(s => `
-        <li>
-          <span class="source-item"><span class="source-label">${escapeHtml(s.label || s.source_url)}</span><small class="source-url">${escapeHtml(s.source_url)}</small></span>
-          <button data-id="${s.id}" class="btn-del">删除</button>
-        </li>
-      `).join('') : '<li style="padding:12px 14px;color:#666;">暂无已保存的新闻源，请点击上方按钮添加</li>';
-      list.innerHTML = listHtml;
-      list.querySelectorAll('.btn-del').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          await api('/sources/' + btn.dataset.id, { method: 'DELETE' });
-          loadConfig();
-        });
-      });
+      if (list && sources.length > 0) {
+        const listHtml = sources.map(s => `
+          <li>
+            <span class="source-item"><span class="source-label">${escapeHtml(s.label || s.source_url)}</span><small class="source-url">${escapeHtml(s.source_url)}</small></span>
+            <button data-id="${s.id}" class="btn-del">删除</button>
+          </li>
+        `).join('');
+        list.innerHTML = listHtml;
+      } else if (list && sources.length === 0 && sourcesOk) {
+        const listHtml = '<li style="padding:12px 14px;color:#666;">暂无已保存的新闻源，请点击上方按钮添加</li>';
+        const hasRealItems = list.querySelector('li:not([style*="padding:12px"])');
+        if (!hasRealItems) list.innerHTML = listHtml;
+      }
 
-      document.getElementById('filter-mode').value = filters.mode || 'include';
+      const filterModeEl = document.getElementById('filter-mode');
+      if (filterModeEl) filterModeEl.value = filters.mode || 'include';
       const filterCategoriesDiv = document.getElementById('filter-categories');
       const presetsToUse = (presets?.length) ? presets : FALLBACK_FILTER_PRESETS;
       if (filterCategoriesDiv) {
@@ -579,30 +580,37 @@
       const presetMap = Object.fromEntries(presetsToUse.map(p => [p.id, p.label]));
       const filterLabels = (filters.categories || []).map(id => presetMap[id] || id).filter(Boolean);
       const filterModeText = (filters.mode || 'include') === 'include' ? '包含' : '排除';
-      document.getElementById('filter-summary').textContent = filterLabels.length
+      const filterSummaryEl = document.getElementById('filter-summary');
+      if (filterSummaryEl) filterSummaryEl.textContent = filterLabels.length
         ? `当前：${filterModeText}模式，已选：${filterLabels.join('、')}`
         : '当前：未选择类别';
 
-      document.getElementById('schedule-frequency-hours').value = String(schedule.frequency_hours ?? 24);
+      const freqEl = document.getElementById('schedule-frequency-hours');
+      if (freqEl) freqEl.value = String(schedule.frequency_hours ?? 24);
       const [savedHour, savedMin] = (schedule.send_time || '06:00').split(':');
-      document.getElementById('schedule-hour').value = savedHour?.padStart(2, '0') || '06';
-      document.getElementById('schedule-minute').value = savedMin?.padStart(2, '0') || '00';
+      const hourEl = document.getElementById('schedule-hour');
+      if (hourEl) hourEl.value = savedHour?.padStart(2, '0') || '06';
+      const minEl = document.getElementById('schedule-minute');
+      if (minEl) minEl.value = savedMin?.padStart(2, '0') || '00';
       const tzSel = document.getElementById('schedule-timezone');
       const storedTz = schedule.timezone || getSystemTimezone();
-      if (!schedule.hasSchedule || storedTz === getSystemTimezone()) {
-        tzSel.value = 'auto';
-      } else {
-        if (!TIMEZONES.some(([v]) => v === storedTz)) {
-          tzSel.innerHTML += `<option value="${storedTz}">${storedTz}</option>`;
+      if (tzSel) {
+        if (!schedule.hasSchedule || storedTz === getSystemTimezone()) {
+          tzSel.value = 'auto';
+        } else {
+          if (!TIMEZONES.some(([v]) => v === storedTz)) {
+            tzSel.innerHTML += `<option value="${storedTz}">${storedTz}</option>`;
+          }
+          tzSel.value = storedTz;
         }
-        tzSel.value = storedTz;
       }
 
       const fh = schedule.frequency_hours ?? 24;
       const sendTime = schedule.send_time || '06:00';
       const tz = schedule.timezone || getSystemTimezone();
       const scheduleText = fh < 24 ? `每${fh}小时 ${sendTime}` : fh === 24 ? `每天 ${sendTime}` : `每${fh}小时 ${sendTime}（约${Math.round(fh/24)}天）`;
-      document.getElementById('schedule-summary').textContent = `当前：${scheduleText}，含过去${fh}小时内新闻 (${tz})`;
+      const scheduleSummaryEl = document.getElementById('schedule-summary');
+      if (scheduleSummaryEl) scheduleSummaryEl.textContent = `当前：${scheduleText}，含过去${fh}小时内新闻 (${tz})`;
     }
 
     const hourDatalist = document.getElementById('schedule-hour-list');
@@ -670,20 +678,40 @@
       const btn = e.target.closest('.btn-quick-add');
       if (!btn) return;
       const msgEl = document.getElementById('source-msg');
+      const listEl = document.getElementById('source-list');
+      const summaryEl = document.getElementById('source-summary');
       msgEl.className = 'hidden';
       msgEl.textContent = '';
       try {
-        await api('/sources', { method: 'POST', body: JSON.stringify({ source_url: btn.dataset.url, label: btn.dataset.label }) });
+        const data = await api('/sources', { method: 'POST', body: JSON.stringify({ source_url: btn.dataset.url, label: btn.dataset.label }) });
         msgEl.className = 'success';
         msgEl.textContent = '已添加 ' + (btn.dataset.label || '');
         msgEl.classList.remove('hidden');
-        loadConfig().catch(() => {});
         setTimeout(() => msgEl.classList.add('hidden'), 2000);
+        if (data?.id && listEl) {
+          const placeholder = listEl.querySelector('li[style*="padding:12px"]');
+          const newLi = document.createElement('li');
+          newLi.innerHTML = `<span class="source-item"><span class="source-label">${escapeHtml(data.label || data.source_url)}</span><small class="source-url">${escapeHtml(data.source_url)}</small></span><button data-id="${data.id}" class="btn-del">删除</button>`;
+          if (placeholder) placeholder.replaceWith(newLi);
+          else listEl.appendChild(newLi);
+          const count = listEl.querySelectorAll('li').length;
+          if (summaryEl) summaryEl.textContent = `已添加 ${count} 个新闻源：`;
+        }
+        setTimeout(() => loadConfig().catch(() => {}), 250);
       } catch (err) {
         msgEl.className = 'error';
         msgEl.textContent = err?.message || '添加失败，请稍后重试';
         msgEl.classList.remove('hidden');
       }
+    });
+
+    document.getElementById('source-list')?.addEventListener('click', async (e) => {
+      const delBtn = e.target.closest('.btn-del');
+      if (!delBtn) return;
+      try {
+        await api('/sources/' + delBtn.dataset.id, { method: 'DELETE' });
+        loadConfig();
+      } catch (err) { alert(err?.message || '删除失败'); }
     });
 
     showPage(token ? 'config' : 'register');
