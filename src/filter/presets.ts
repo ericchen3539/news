@@ -192,6 +192,48 @@ export const COMMERCIAL_KEYWORDS = [
   "北极光",
 ];
 
+/**
+ * Explicit weak keywords: appear in many non-category contexts (e.g. "capital" in venture capital).
+ * In include mode, if only weak keywords match, require matchCount >= 2 to reduce false positives.
+ */
+const EXPLICIT_WEAK_KEYWORDS = new Set([
+  "capital",
+  "government",
+  "政府",
+  "policy",
+  "war",
+  "market",
+  "state",
+  "minister",
+  "经济",
+]);
+
+/**
+ * Keywords that appear in multiple presets (cross-category) can cause false politics matches.
+ * E.g. a tech article with "government" gets included in politics. Auto-add these to weak list.
+ */
+function getCrossCategoryKeywords(): Set<string> {
+  const keywordToPresets = new Map<string, Set<string>>();
+  for (const [presetId, preset] of Object.entries(FILTER_PRESETS)) {
+    for (const kw of preset.keywords) {
+      const presets = keywordToPresets.get(kw) ?? new Set();
+      presets.add(presetId);
+      keywordToPresets.set(kw, presets);
+    }
+  }
+  const crossCategory = new Set<string>();
+  for (const [kw, presets] of keywordToPresets) {
+    if (presets.size >= 2) crossCategory.add(kw);
+  }
+  return crossCategory;
+}
+
+/** Weak keywords = explicit + cross-category. Cross-category keywords auto-join when added to multiple presets. */
+export const WEAK_KEYWORDS = new Set([
+  ...EXPLICIT_WEAK_KEYWORDS,
+  ...getCrossCategoryKeywords(),
+]);
+
 export function expandCategories(categoryIds: string[]): string[] {
   const keywords = new Set<string>();
   for (const id of categoryIds) {
