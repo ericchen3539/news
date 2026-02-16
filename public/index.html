@@ -709,10 +709,10 @@
       try {
         const data = await api('/sources', { method: 'POST', body: JSON.stringify({ source_url: btn.dataset.url, label: btn.dataset.label }) });
         msgEl.className = 'success';
-        msgEl.textContent = '已添加 ' + (btn.dataset.label || '');
+        msgEl.textContent = data?.alreadyExisted ? (btn.dataset.label || '') + ' 已添加过' : '已添加 ' + (btn.dataset.label || '');
         msgEl.classList.remove('hidden');
         setTimeout(() => msgEl.classList.add('hidden'), 2000);
-        if (data?.id && listEl) {
+        if (data?.id && listEl && !data.alreadyExisted) {
           const placeholder = listEl.querySelector('li[style*="padding:12px"]');
           const newLi = document.createElement('li');
           newLi.innerHTML = `<span class="source-item"><span class="source-label">${escapeHtml(data.label || data.source_url)}</span><small class="source-url">${escapeHtml(data.source_url)}</small></span><button data-id="${data.id}" class="btn-del">删除</button>`;

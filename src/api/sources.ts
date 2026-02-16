@@ -5,7 +5,7 @@
 
 import { Router } from "express";
 import { getDb, saveDb } from "../db/index.js";
-import { run, runReturning, all } from "../db/query.js";
+import { run, runReturning, all, get } from "../db/query.js";
 import { requireAuth } from "./middleware.js";
 import { discoverRssFeed } from "../fetcher/discover.js";
 import { getGoogleNewsPresetUrl } from "../fetcher/source-presets.js";
@@ -61,6 +61,17 @@ sourcesRouter.post("/", async (req, res) => {
     })();
 
   const db = await getDb();
+  const existing = await get<[number] | { id: number }>(
+    db,
+    "SELECT id FROM user_sources WHERE user_id = ? AND source_url = ? LIMIT 1",
+    [userId, feedUrl]
+  );
+  if (existing) {
+    const id = Array.isArray(existing) ? existing[0] : existing.id;
+    res.status(200).json({ id, source_url: feedUrl, label: displayLabel, alreadyExisted: true });
+    return;
+  }
+
   const row = await runReturning<[number] | { id: number }>(
     db,
     "INSERT INTO user_sources (user_id, source_url, label) VALUES (?, ?, ?) RETURNING id",
