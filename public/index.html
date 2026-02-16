@@ -29,7 +29,7 @@
     .source-form label { margin: 0; }
     .source-form input { width: 100%; }
     .row input { flex: 1; }
-    .source-list { list-style: none; padding: 0; margin: 0; border: 1px solid #c5d9f0; border-radius: 6px; background: #fafcff; }
+    .source-list { list-style: none; padding: 0; margin: 0; border: 1px solid #c5d9f0; border-radius: 6px; background: #fafcff; min-height: 48px; }
     .source-list li { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border-bottom: 1px solid #e8f0f8; }
     .source-list li:last-child { border-bottom: none; }
     .source-list li span { flex: 1; overflow: hidden; min-width: 0; }
@@ -497,16 +497,27 @@
     }
 
     async function loadConfig() {
-      const [sources, filters, schedule, presets, sourcePresets] = await Promise.all([
-        api('/sources'),
-        api('/filters'),
-        api('/schedule'),
-        api('/filter-presets'),
-        api('/source-presets').catch(() => ({ googleNews: [] }))
-      ]);
+      let sources = [], filters = { mode: 'include', categories: [] }, schedule = {}, presets = [], sourcePresets = { googleNews: [] }, sourcesOk = false;
+      try {
+        const results = await Promise.allSettled([
+          api('/sources'),
+          api('/filters'),
+          api('/schedule'),
+          api('/filter-presets'),
+          api('/source-presets').catch(() => ({ googleNews: [] }))
+        ]);
+        sourcesOk = results[0].status === 'fulfilled' && Array.isArray(results[0].value);
+        if (sourcesOk) sources = results[0].value;
+        if (results[1].status === 'fulfilled' && results[1].value) filters = results[1].value;
+        if (results[2].status === 'fulfilled' && results[2].value) schedule = results[2].value;
+        if (results[3].status === 'fulfilled' && Array.isArray(results[3].value)) presets = results[3].value;
+        if (results[4].status === 'fulfilled' && results[4].value) sourcePresets = results[4].value;
+      } catch (e) {
+        console.error('[loadConfig]', e);
+      }
 
       const quickAdd = document.getElementById('source-quick-add');
-      const gnews = sourcePresets.googleNews || [];
+      const gnews = sourcePresets?.googleNews || [];
       quickAdd.innerHTML = gnews.map(p => `
         <button type="button" class="btn-quick-add" data-url="news.google.com" data-label="${escapeHtml(p.label)}">+ ${escapeHtml(p.label)}</button>
       `).join('');
@@ -520,15 +531,16 @@
       });
 
       const summary = document.getElementById('source-summary');
-      summary.textContent = sources.length ? `已添加 ${sources.length} 个新闻源：` : '暂无新闻源，请在上方添加。';
+      summary.textContent = !sourcesOk ? '加载失败，请刷新页面或重新登录后重试' : sources.length ? `已添加 ${sources.length} 个新闻源：` : '暂无新闻源，请在上方添加。';
 
       const list = document.getElementById('source-list');
-      list.innerHTML = sources.map(s => `
+      const listHtml = sources.length ? sources.map(s => `
         <li>
           <span class="source-item"><span class="source-label">${escapeHtml(s.label || s.source_url)}</span><small class="source-url">${escapeHtml(s.source_url)}</small></span>
           <button data-id="${s.id}" class="btn-del">删除</button>
         </li>
-      `).join('');
+      `).join('') : '<li style="padding:12px 14px;color:#666;">暂无已保存的新闻源，请点击上方按钮添加</li>';
+      list.innerHTML = listHtml;
       list.querySelectorAll('.btn-del').forEach(btn => {
         btn.addEventListener('click', async () => {
           await api('/sources/' + btn.dataset.id, { method: 'DELETE' });
