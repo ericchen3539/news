@@ -496,6 +496,9 @@
       }
     }
 
+    const FALLBACK_FILTER_PRESETS = [{id:'politics',label:'政治'},{id:'tech',label:'科技'},{id:'sports',label:'体育'},{id:'business',label:'财经'},{id:'entertainment',label:'娱乐'}];
+    const FALLBACK_GOOGLE_NEWS = [{id:'home',label:'Home'},{id:'u-s',label:'U.S.'},{id:'world',label:'World'},{id:'nation',label:'Nation'},{id:'politics',label:'Politics'},{id:'business',label:'Business'},{id:'technology',label:'Technology'},{id:'entertainment',label:'Entertainment'},{id:'sports',label:'Sports'},{id:'science',label:'Science'},{id:'health',label:'Health'}];
+
     async function loadConfig() {
       let sources = [], filters = { mode: 'include', categories: [] }, schedule = {}, presets = [], sourcePresets = { googleNews: [] }, sourcesOk = false;
       try {
@@ -510,14 +513,14 @@
         if (sourcesOk) sources = results[0].value;
         if (results[1].status === 'fulfilled' && results[1].value) filters = results[1].value;
         if (results[2].status === 'fulfilled' && results[2].value) schedule = results[2].value;
-        if (results[3].status === 'fulfilled' && Array.isArray(results[3].value)) presets = results[3].value;
-        if (results[4].status === 'fulfilled' && results[4].value) sourcePresets = results[4].value;
+        presets = (results[3].status === 'fulfilled' && Array.isArray(results[3].value) && results[3].value.length) ? results[3].value : FALLBACK_FILTER_PRESETS;
+        sourcePresets = (results[4].status === 'fulfilled' && results[4].value?.googleNews?.length) ? results[4].value : { googleNews: FALLBACK_GOOGLE_NEWS };
       } catch (e) {
         console.error('[loadConfig]', e);
       }
 
       const quickAdd = document.getElementById('source-quick-add');
-      const gnews = sourcePresets?.googleNews || [];
+      const gnews = sourcePresets?.googleNews || FALLBACK_GOOGLE_NEWS;
       quickAdd.innerHTML = gnews.map(p => `
         <button type="button" class="btn-quick-add" data-url="news.google.com" data-label="${escapeHtml(p.label)}">+ ${escapeHtml(p.label)}</button>
       `).join('');
@@ -550,14 +553,15 @@
 
       document.getElementById('filter-mode').value = filters.mode || 'include';
       const filterCategoriesDiv = document.getElementById('filter-categories');
-      filterCategoriesDiv.innerHTML = presets.map(p => `
+      const presetsToUse = presets.length ? presets : FALLBACK_FILTER_PRESETS;
+      filterCategoriesDiv.innerHTML = presetsToUse.map(p => `
         <label><input type="checkbox" value="${p.id}"> ${p.label}</label>
       `).join('');
       (filters.categories || []).forEach(id => {
         const cb = document.querySelector(`#filter-categories input[value="${id}"]`);
         if (cb) cb.checked = true;
       });
-      const presetMap = Object.fromEntries(presets.map(p => [p.id, p.label]));
+      const presetMap = Object.fromEntries(presetsToUse.map(p => [p.id, p.label]));
       const filterLabels = (filters.categories || []).map(id => presetMap[id] || id).filter(Boolean);
       const filterModeText = (filters.mode || 'include') === 'include' ? '包含' : '排除';
       document.getElementById('filter-summary').textContent = filterLabels.length
