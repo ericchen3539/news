@@ -7,6 +7,7 @@ import { Router } from "express";
 import { getDb, saveDb } from "../db/index.js";
 import { run, get } from "../db/query.js";
 import { requireAuth } from "./middleware.js";
+import { getUserForDigest, processUser } from "../cron/run.js";
 
 const DEFAULT_SCHEDULE = {
   frequency_hours: 24,
@@ -77,4 +78,23 @@ scheduleRouter.put("/", async (req, res) => {
     saveDb();
   }
   res.json({ frequency_hours: fh, send_time: sendTime, timezone: tz });
+});
+
+scheduleRouter.post("/send-now", async (req, res) => {
+  const userId = req.userId!;
+  const user = await getUserForDigest(userId);
+  if (!user) {
+    res.status(400).json({
+      error: "请先添加新闻源并验证邮箱后再试",
+    });
+    return;
+  }
+  try {
+    await processUser(user);
+    res.json({ message: "摘要已发送，请查收邮箱" });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "发送失败";
+    console.error("[Schedule] send-now failed:", err);
+    res.status(500).json({ error: msg });
+  }
 });

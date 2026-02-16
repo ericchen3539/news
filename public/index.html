@@ -170,6 +170,7 @@
       <label>时区</label>
       <select id="schedule-timezone"></select>
       <button id="btn-save-schedule">保存</button>
+      <button type="button" id="btn-send-now" class="link-btn" style="margin-left:12px;">立即发送</button>
       <div class="config-summary" id="schedule-summary"></div>
       <div id="schedule-msg" class="hidden"></div>
     </section>
@@ -672,6 +673,29 @@
       const scheduleText = fh < 24 ? `每${fh}小时 ${send_time}` : fh === 24 ? `每天 ${send_time}` : `每${fh}小时 ${send_time}（约${Math.round(fh/24)}天）`;
       document.getElementById('schedule-summary').textContent = `当前：${scheduleText}，含过去${fh}小时内新闻 (${timezone})`;
       setTimeout(() => msg.classList.add('hidden'), 2000);
+    });
+
+    document.getElementById('btn-send-now').addEventListener('click', async () => {
+      const btn = document.getElementById('btn-send-now');
+      const msg = document.getElementById('schedule-msg');
+      msg.className = 'hidden';
+      msg.textContent = '';
+      btn.disabled = true;
+      btn.textContent = '发送中...';
+      try {
+        await api('/schedule/send-now', { method: 'POST' });
+        msg.className = 'success';
+        msg.textContent = '摘要已发送，请查收邮箱';
+        msg.classList.remove('hidden');
+        loadEmails();
+      } catch (e) {
+        msg.className = 'error';
+        msg.textContent = e?.message || '发送失败';
+        msg.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '立即发送';
+      }
     });
 
     document.getElementById('source-quick-add')?.addEventListener('click', async (e) => {
