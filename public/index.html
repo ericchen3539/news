@@ -132,6 +132,7 @@
         <button type="button" class="btn-quick-add" data-url="news.google.com" data-label="Health">+ Health</button>
       </div>
       <div class="source-summary" id="source-summary"></div>
+      <div id="source-msg" class="hidden" style="margin-top:8px;"></div>
       <ul class="source-list" id="source-list"></ul>
     </section>
     <section>
@@ -668,10 +669,22 @@
     document.getElementById('source-quick-add')?.addEventListener('click', async (e) => {
       const btn = e.target.closest('.btn-quick-add');
       if (!btn) return;
+      const msgEl = document.getElementById('source-msg');
+      msgEl.className = 'hidden';
+      msgEl.textContent = '';
       try {
         await api('/sources', { method: 'POST', body: JSON.stringify({ source_url: btn.dataset.url, label: btn.dataset.label }) });
-        loadConfig();
-      } catch (err) { alert(err.message); }
+        msgEl.className = 'success';
+        msgEl.textContent = '已添加 ' + (btn.dataset.label || '') + '，正在刷新...';
+        msgEl.classList.remove('hidden');
+        await loadConfig();
+        msgEl.textContent = '已添加 ' + (btn.dataset.label || '');
+        setTimeout(() => msgEl.classList.add('hidden'), 2000);
+      } catch (err) {
+        msgEl.className = 'error';
+        msgEl.textContent = err?.message || '添加失败，请稍后重试';
+        msgEl.classList.remove('hidden');
+      }
     });
 
     showPage(token ? 'config' : 'register');
