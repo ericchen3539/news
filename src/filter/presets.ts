@@ -121,6 +121,9 @@ const TEXT_FALSE_POSITIVES = [
   "god of war",
   "战神",
   "hardware", // "Hardware" contains "war"
+  "software", // "software" contains "war"
+  "stable", // "stable" contains "state"
+  "military-grade", // tech context for encryption etc
   // 地理/行政语境
   "state capital",
   "capital region",
@@ -132,10 +135,18 @@ const TEXT_FALSE_POSITIVES = [
   "cookie policy",
   "content policy",
   "security policy",
+  "corporate policy",
+  "company policy",
+  "platform policy",
+  "ad policy",
+  "user policy",
   // 政府/安全语境（科技漏洞、浏览器警告）
   "政府向 chrome 用户发出",
+  "政府向用户发出",
   "政府向用户发出警报",
   "印度政府警告",
+  "政府敦促用户更新",
+  "政府敦促更新",
   // political 误匹配
   "apolitical",
 ];
@@ -206,6 +217,8 @@ const EXPLICIT_WEAK_KEYWORDS = new Set([
   "state",
   "minister",
   "经济",
+  "investigation",
+  "military",
 ]);
 
 /**
