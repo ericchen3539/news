@@ -32,7 +32,7 @@ devRouter.post("/send-digest-now", async (req, res) => {
   }
 
   try {
-    const { sent } = await processUser(user);
+    const { sent } = await processUser(user, "manual");
     if (sent) {
       res.json({ message: `Digest sent to ${user.email}` });
     } else {

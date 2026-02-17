@@ -21,6 +21,9 @@ async function migrate() {
     await (db as { query: (s: string) => Promise<unknown> }).query(
       "ALTER TABLE sent_emails ADD COLUMN IF NOT EXISTS content TEXT"
     );
+    await (db as { query: (s: string) => Promise<unknown> }).query(
+      "ALTER TABLE sent_emails ADD COLUMN IF NOT EXISTS digest_trigger TEXT"
+    );
     try {
       await (db as { query: (s: string) => Promise<unknown> }).query(
         "ALTER TABLE user_schedules ADD COLUMN frequency_hours INTEGER DEFAULT 24"
@@ -46,6 +49,12 @@ async function migrate() {
     saveDb();
     try {
       (db as { run: (s: string) => void }).run("ALTER TABLE sent_emails ADD COLUMN content TEXT");
+      saveDb();
+    } catch (err) {
+      if (!String(err).includes("duplicate column")) throw err;
+    }
+    try {
+      (db as { run: (s: string) => void }).run("ALTER TABLE sent_emails ADD COLUMN digest_trigger TEXT");
       saveDb();
     } catch (err) {
       if (!String(err).includes("duplicate column")) throw err;

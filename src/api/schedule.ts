@@ -90,7 +90,7 @@ scheduleRouter.post("/send-now", async (req, res) => {
     return;
   }
   try {
-    const { sent } = await processUser(user);
+    const { sent } = await processUser(user, "manual");
     if (sent) {
       res.json({ message: "摘要已发送，请查收邮箱" });
     } else {

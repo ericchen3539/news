@@ -71,4 +71,5 @@ export const SCHEMA_PG_STATEMENTS = [
   `ALTER TABLE sent_emails ADD COLUMN IF NOT EXISTS content TEXT`,
   `ALTER TABLE user_schedules ADD COLUMN IF NOT EXISTS frequency_hours INTEGER DEFAULT 24`,
   `ALTER TABLE user_schedules ADD COLUMN IF NOT EXISTS fetch_window_hours INTEGER DEFAULT 24`,
+  `ALTER TABLE sent_emails ADD COLUMN IF NOT EXISTS digest_trigger TEXT`,
 ];

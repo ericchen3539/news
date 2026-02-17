@@ -11,7 +11,7 @@ import { filterNews } from "../filter/engine.js";
 import { translateBatch } from "../translate/index.js";
 import { buildDigestTable } from "../email/template.js";
 import { sendDigestEmail } from "../email/send.js";
-import { logSentEmail } from "../email/log.js";
+import { logSentEmail, type DigestTrigger } from "../email/log.js";
 
 export interface UserToNotify {
   userId: number;
@@ -97,7 +97,7 @@ export async function getUsersToNotify(): Promise<UserToNotify[]> {
 
     const lastDigestRow = await get<[number] | { sent_at: number }>(
       db,
-      "SELECT sent_at FROM sent_emails WHERE user_id = ? AND type = 'digest' ORDER BY sent_at DESC LIMIT 1",
+      "SELECT sent_at FROM sent_emails WHERE user_id = ? AND type = 'digest' AND (digest_trigger = 'cron' OR digest_trigger IS NULL) ORDER BY sent_at DESC LIMIT 1",
       [userId]
     );
     const lastSentAt = lastDigestRow
@@ -237,7 +237,7 @@ function getDigestSubject(): string {
   return `${dateStr}摘要`;
 }
 
-export async function processUser(user: UserToNotify): Promise<{ sent: boolean }> {
+export async function processUser(user: UserToNotify, trigger?: DigestTrigger): Promise<{ sent: boolean }> {
   const db = await getDb();
   let items = await getCachedNews(db, user.userId, user.fetchWindowHours);
 
@@ -262,7 +262,7 @@ export async function processUser(user: UserToNotify): Promise<{ sent: boolean }
   const htmlTable = buildDigestTable(translated);
   const subject = getDigestSubject();
   const html = await sendDigestEmail(user.email, htmlTable, subject);
-  await logSentEmail(user.userId, "digest", subject, html);
+  await logSentEmail(user.userId, "digest", subject, html, trigger);
   return { sent: true };
 }
 
@@ -270,7 +270,7 @@ export async function runTick(): Promise<void> {
   const users = await getUsersToNotify();
   for (const user of users) {
     try {
-      const { sent } = await processUser(user);
+      const { sent } = await processUser(user, "cron");
       if (sent) console.log(`Digest sent to ${user.email}`);
     } catch (err) {
       console.error(`Failed to send digest to ${user.email}:`, err);
