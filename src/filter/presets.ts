@@ -124,6 +124,7 @@ const TEXT_FALSE_POSITIVES = [
   "software", // "software" contains "war"
   "stable", // "stable" contains "state"
   "military-grade", // tech context for encryption etc
+  "android police", // tech site name, prevents "ice" matching inside
   // 地理/行政语境
   "state capital",
   "capital region",
