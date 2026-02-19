@@ -3,7 +3,15 @@
  */
 
 import { Router } from "express";
-import { register, verifyEmail, resendVerificationEmail, login } from "../auth/index.js";
+import {
+  register,
+  verifyEmail,
+  resendVerificationEmail,
+  resendVerificationEmailByUserId,
+  login,
+  getMe,
+} from "../auth/index.js";
+import { requireAuth } from "./middleware.js";
 
 export const authRouter = Router();
 
@@ -42,7 +50,39 @@ authRouter.get("/verify", async (req, res) => {
   res.json({ message: "Email verified successfully." });
 });
 
+authRouter.get("/me", requireAuth, async (req, res) => {
+  const userId = req.userId!;
+  const user = await getMe(userId);
+  if (!user) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+  res.json({ email: user.email, verified: user.verified });
+});
+
 authRouter.post("/resend-verification", async (req, res) => {
+  const auth = req.headers.authorization;
+  const token = auth?.startsWith("Bearer ") ? auth.slice(7) : null;
+  if (token) {
+    const { verifyToken } = await import("../auth/index.js");
+    const payload = verifyToken(token);
+    if (payload) {
+      try {
+        const result = await resendVerificationEmailByUserId(payload.userId);
+        if (!result.ok) {
+          res.status(result.statusCode ?? 400).json({ error: result.error });
+          return;
+        }
+        res.json({ message: "Verification email sent. Check your inbox." });
+        return;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Resend failed";
+        console.error("[Auth] Resend verification error:", err);
+        res.status(500).json({ error: msg });
+        return;
+      }
+    }
+  }
   const { email } = req.body ?? {};
   if (!email || typeof email !== "string") {
     res.status(400).json({ error: "Email required" });

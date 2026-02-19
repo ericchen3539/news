@@ -156,9 +156,9 @@ export async function login(
 ): Promise<{ ok: boolean; token?: string; error?: string }> {
   const db = await getDb();
 
-  const row = await get<[number, string, number | null] | { id: number; password_hash: string; verified_at: number | null }>(
+  const row = await get<[number, string] | { id: number; password_hash: string }>(
     db,
-    "SELECT id, password_hash, verified_at FROM users WHERE email = ?",
+    "SELECT id, password_hash FROM users WHERE email = ?",
     [email.toLowerCase()]
   );
   if (!row) {
@@ -167,14 +167,10 @@ export async function login(
 
   const id = Array.isArray(row) ? row[0] : row.id;
   const passwordHash = Array.isArray(row) ? row[1] : row.password_hash;
-  const verifiedAt = Array.isArray(row) ? row[2] : row.verified_at;
   const match = await bcrypt.compare(password, passwordHash);
   if (!match) return { ok: false, error: "Invalid email or password" };
 
-  if (!verifiedAt) {
-    return { ok: false, error: "Email not verified. Check your inbox." };
-  }
-
+  // Allow unverified users to login so they can access re-verification flow from config page
   const token = jwt.sign({ userId: id }, JWT_SECRET, { expiresIn: "7d" });
   return { ok: true, token };
 }
@@ -186,4 +182,33 @@ export function verifyToken(token: string): { userId: number } | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * Get current user info (email, verified status) by userId.
+ */
+export async function getMe(userId: number): Promise<{ email: string; verified: boolean } | null> {
+  const db = await getDb();
+  const row = await get<[string, number | null] | { email: string; verified_at: number | null }>(
+    db,
+    "SELECT email, verified_at FROM users WHERE id = ?",
+    [userId]
+  );
+  if (!row) return null;
+  const email = Array.isArray(row) ? row[0] : row.email;
+  const verifiedAt = Array.isArray(row) ? row[1] : row.verified_at;
+  return { email, verified: !!verifiedAt };
+}
+
+/**
+ * Resend verification email by userId (for authenticated users).
+ */
+export async function resendVerificationEmailByUserId(
+  userId: number
+): Promise<{ ok: boolean; error?: string; statusCode?: number }> {
+  const db = await getDb();
+  const row = await get<[string] | { email: string }>(db, "SELECT email FROM users WHERE id = ?", [userId]);
+  if (!row) return { ok: false, error: "User not found" };
+  const email = Array.isArray(row) ? row[0] : row.email;
+  return resendVerificationEmail(email);
 }
