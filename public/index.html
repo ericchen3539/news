@@ -107,7 +107,7 @@
       <input type="password" id="login-password">
       <button id="btn-login">登录</button>
       <div id="login-msg" class="error hidden"></div>
-      <p class="verify-hint hidden" id="verify-hint" style="margin-top:12px;font-size:0.9em;">
+      <p class="verify-hint" style="margin-top:12px;font-size:0.9em;color:#666;">
         未收到验证邮件？<button type="button" id="btn-resend-verify" class="link-btn">重新发送验证邮件</button>
         <span class="dev-only" style="margin-left:8px;"><button type="button" id="btn-manual-verify" class="link-btn">手动验证（开发）</button></span>
       </p>
@@ -303,23 +303,19 @@
       const email = document.getElementById('login-email').value.trim();
       const password = document.getElementById('login-password').value;
       const msg = document.getElementById('login-msg');
-      const hint = document.getElementById('verify-hint');
       msg.className = 'error hidden';
-      hint.classList.add('hidden');
       try {
         const { token: t } = await api('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
         token = t; localStorage.setItem('token', t);
         showPage('config');
       } catch (e) {
         msg.textContent = e.message; msg.classList.remove('hidden');
-        if (e.message.includes('Email not verified') && email) hint.classList.remove('hidden');
       }
     });
 
     document.getElementById('btn-resend-verify').addEventListener('click', async () => {
       const email = document.getElementById('login-email').value.trim();
       const msg = document.getElementById('login-msg');
-      const hint = document.getElementById('verify-hint');
       if (!email) { msg.textContent = '请先输入邮箱'; msg.classList.remove('hidden'); return; }
       const btn = document.getElementById('btn-resend-verify');
       btn.disabled = true;
@@ -335,12 +331,10 @@
     document.getElementById('btn-manual-verify').addEventListener('click', async () => {
       const email = document.getElementById('login-email').value.trim();
       const msg = document.getElementById('login-msg');
-      const hint = document.getElementById('verify-hint');
       if (!email) { msg.textContent = '请先输入邮箱'; msg.classList.remove('hidden'); return; }
       try {
         await api('/auth/verify-email', { method: 'POST', body: JSON.stringify({ email }) });
         msg.className = 'success'; msg.textContent = '已验证，请重新登录。'; msg.classList.remove('hidden');
-        hint.classList.add('hidden');
       } catch (e) { msg.textContent = e.message; msg.classList.remove('hidden'); }
     });
 
