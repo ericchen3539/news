@@ -108,12 +108,19 @@
       <button id="btn-login">登录</button>
       <div id="login-msg" class="error hidden"></div>
       <p class="verify-hint hidden" id="verify-hint" style="margin-top:12px;font-size:0.9em;">
-        未收到验证邮件？<button type="button" id="btn-manual-verify" class="link-btn">点击此处手动验证</button>
+        未收到验证邮件？<button type="button" id="btn-resend-verify" class="link-btn">重新发送验证邮件</button>
+        <span class="dev-only" style="margin-left:8px;"><button type="button" id="btn-manual-verify" class="link-btn">手动验证（开发）</button></span>
       </p>
     </section>
   </div>
 
   <div id="page-config" class="page hidden">
+    <section id="verify-banner" class="hidden" style="background:#fff8e6;border-color:#e6d68a;">
+      <h2>邮箱未验证</h2>
+      <p>您的邮箱尚未验证，将无法接收摘要邮件。请查收验证邮件并点击链接完成验证。</p>
+      <button type="button" id="btn-config-resend-verify">重新发送验证邮件</button>
+      <span id="verify-banner-msg" class="hidden" style="margin-left:12px;"></span>
+    </section>
     <section>
       <h2>新闻源</h2>
       <p class="section-hint">订阅多个主题可获取更多新闻（每主题最多约 100 条，合并去重后可达数百条）。</p>
@@ -307,6 +314,22 @@
         msg.textContent = e.message; msg.classList.remove('hidden');
         if (e.message.includes('Email not verified') && email) hint.classList.remove('hidden');
       }
+    });
+
+    document.getElementById('btn-resend-verify').addEventListener('click', async () => {
+      const email = document.getElementById('login-email').value.trim();
+      const msg = document.getElementById('login-msg');
+      const hint = document.getElementById('verify-hint');
+      if (!email) { msg.textContent = '请先输入邮箱'; msg.classList.remove('hidden'); return; }
+      const btn = document.getElementById('btn-resend-verify');
+      btn.disabled = true;
+      try {
+        await api('/auth/resend-verification', { method: 'POST', body: JSON.stringify({ email }) });
+        msg.className = 'success'; msg.textContent = '已发送，请查收邮箱。'; msg.classList.remove('hidden');
+      } catch (e) {
+        msg.textContent = e.message; msg.classList.remove('hidden');
+      }
+      btn.disabled = false;
     });
 
     document.getElementById('btn-manual-verify').addEventListener('click', async () => {
@@ -523,18 +546,22 @@
       let sources = [], filters = { mode: 'include', categories: [] }, schedule = {}, presets = [], sourcePresets = { googleNews: [] }, sourcesOk = false;
       try {
         const results = await Promise.allSettled([
+          api('/auth/me'),
           api('/sources'),
           api('/filters'),
           api('/schedule'),
           api('/filter-presets'),
           api('/source-presets').catch(() => ({ googleNews: [] }))
         ]);
-        sourcesOk = results[0].status === 'fulfilled' && Array.isArray(results[0].value);
-        if (sourcesOk) sources = results[0].value;
-        if (results[1].status === 'fulfilled' && results[1].value) filters = results[1].value;
-        if (results[2].status === 'fulfilled' && results[2].value) schedule = results[2].value;
-        presets = (results[3].status === 'fulfilled' && Array.isArray(results[3].value) && results[3].value.length) ? results[3].value : FALLBACK_FILTER_PRESETS;
-        sourcePresets = (results[4].status === 'fulfilled' && results[4].value?.googleNews?.length) ? results[4].value : { googleNews: FALLBACK_GOOGLE_NEWS };
+        const me = results[0].status === 'fulfilled' ? results[0].value : null;
+        const verifyBanner = document.getElementById('verify-banner');
+        if (verifyBanner) verifyBanner.classList.toggle('hidden', !me || me.verified);
+        sourcesOk = results[1].status === 'fulfilled' && Array.isArray(results[1].value);
+        if (sourcesOk) sources = results[1].value;
+        if (results[2].status === 'fulfilled' && results[2].value) filters = results[2].value;
+        if (results[3].status === 'fulfilled' && results[3].value) schedule = results[3].value;
+        presets = (results[4].status === 'fulfilled' && Array.isArray(results[4].value) && results[4].value.length) ? results[4].value : FALLBACK_FILTER_PRESETS;
+        sourcePresets = (results[5].status === 'fulfilled' && results[5].value?.googleNews?.length) ? results[5].value : { googleNews: FALLBACK_GOOGLE_NEWS };
       } catch (e) {
         console.error('[loadConfig]', e);
       }
@@ -673,6 +700,26 @@
       const scheduleText = fh < 24 ? `每${fh}小时 ${send_time}` : fh === 24 ? `每天 ${send_time}` : `每${fh}小时 ${send_time}（约${Math.round(fh/24)}天）`;
       document.getElementById('schedule-summary').textContent = `当前：${scheduleText}，含过去${fh}小时内新闻 (${timezone})`;
       setTimeout(() => msg.classList.add('hidden'), 2000);
+    });
+
+    document.getElementById('btn-config-resend-verify')?.addEventListener('click', async () => {
+      const btn = document.getElementById('btn-config-resend-verify');
+      const msgEl = document.getElementById('verify-banner-msg');
+      if (!btn || !msgEl) return;
+      btn.disabled = true;
+      msgEl.className = '';
+      msgEl.textContent = '';
+      msgEl.classList.remove('hidden');
+      try {
+        await api('/auth/resend-verification', { method: 'POST', body: JSON.stringify({}) });
+        msgEl.className = 'success';
+        msgEl.textContent = '已发送，请查收邮箱';
+      } catch (e) {
+        msgEl.className = 'error';
+        msgEl.textContent = e?.message || '发送失败';
+      } finally {
+        btn.disabled = false;
+      }
     });
 
     document.getElementById('btn-send-now').addEventListener('click', async () => {
