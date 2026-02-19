@@ -3,7 +3,7 @@
  */
 
 import { Router } from "express";
-import { register, verifyEmail, login } from "../auth/index.js";
+import { register, verifyEmail, resendVerificationEmail, login } from "../auth/index.js";
 
 export const authRouter = Router();
 
@@ -28,17 +28,38 @@ authRouter.post("/register", async (req, res) => {
 });
 
 authRouter.get("/verify", async (req, res) => {
-  const token = req.query.token as string;
-  if (!token) {
+  const rawToken = req.query.token as string;
+  if (!rawToken) {
     res.status(400).json({ error: "Token required" });
     return;
   }
+  const token = rawToken.trim().toLowerCase();
   const result = await verifyEmail(token);
   if (!result.ok) {
     res.status(400).json({ error: result.error });
     return;
   }
   res.json({ message: "Email verified successfully." });
+});
+
+authRouter.post("/resend-verification", async (req, res) => {
+  const { email } = req.body ?? {};
+  if (!email || typeof email !== "string") {
+    res.status(400).json({ error: "Email required" });
+    return;
+  }
+  try {
+    const result = await resendVerificationEmail(email);
+    if (!result.ok) {
+      res.status(result.statusCode ?? 400).json({ error: result.error });
+      return;
+    }
+    res.json({ message: "Verification email sent. Check your inbox." });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Resend failed";
+    console.error("[Auth] Resend verification error:", err);
+    res.status(500).json({ error: msg });
+  }
 });
 
 authRouter.post("/verify-email", async (req, res) => {

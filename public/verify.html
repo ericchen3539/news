@@ -8,31 +8,81 @@
     body { font-family: system-ui, sans-serif; max-width: 480px; margin: 48px auto; padding: 24px; text-align: center; }
     .success { color: #080; }
     .error { color: #c00; }
+    .hidden { display: none; }
     a { color: #06c; }
   </style>
 </head>
 <body>
   <div id="result">验证中...</div>
+  <div id="resend-form" class="hidden" style="margin-top:16px;">
+    <p>链接无效或已过期？</p>
+    <input type="email" id="resend-email" placeholder="输入注册邮箱" style="padding:8px;width:100%;max-width:280px;margin:8px 0;">
+    <button type="button" id="btn-resend" style="padding:8px 16px;">重新发送验证邮件</button>
+    <p id="resend-msg" style="font-size:0.9em;margin-top:8px;"></p>
+  </div>
   <script>
     const params = new URLSearchParams(location.search);
     const token = params.get('token');
+    const resultEl = document.getElementById('result');
+    const resendForm = document.getElementById('resend-form');
+    const resendEmail = document.getElementById('resend-email');
+    const btnResend = document.getElementById('btn-resend');
+    const resendMsg = document.getElementById('resend-msg');
+
+    function showResendForm() {
+      resendForm.classList.remove('hidden');
+    }
+
     if (!token) {
-      document.getElementById('result').innerHTML = '<p class="error">缺少验证链接</p>';
+      resultEl.innerHTML = '<p class="error">缺少验证链接</p>';
+      showResendForm();
     } else {
-      fetch('/api/auth/verify?token=' + encodeURIComponent(token))
+      fetch('/api/auth/verify?token=' + encodeURIComponent(token.trim()))
         .then(r => r.json())
         .then(data => {
-          const el = document.getElementById('result');
           if (data.error) {
-            el.innerHTML = '<p class="error">' + data.error + '</p>';
+            resultEl.innerHTML = '<p class="error">' + data.error + '</p>';
+            showResendForm();
           } else {
-            el.innerHTML = '<p class="success">邮箱验证成功！</p><p><a href="/">前往配置</a></p>';
+            resultEl.innerHTML = '<p class="success">邮箱验证成功！</p><p><a href="/">前往配置</a></p>';
           }
         })
         .catch(() => {
-          document.getElementById('result').innerHTML = '<p class="error">验证请求失败</p>';
+          resultEl.innerHTML = '<p class="error">验证请求失败</p>';
+          showResendForm();
         });
     }
+
+    btnResend.addEventListener('click', async () => {
+      const email = resendEmail.value.trim();
+      if (!email) {
+        resendMsg.textContent = '请输入邮箱';
+        resendMsg.className = 'error';
+        return;
+      }
+      btnResend.disabled = true;
+      resendMsg.textContent = '发送中...';
+      resendMsg.className = '';
+      try {
+        const r = await fetch('/api/auth/resend-verification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        const data = await r.json();
+        if (data.error) {
+          resendMsg.textContent = data.error;
+          resendMsg.className = 'error';
+        } else {
+          resendMsg.textContent = '已发送，请查收邮箱';
+          resendMsg.className = 'success';
+        }
+      } catch {
+        resendMsg.textContent = '请求失败';
+        resendMsg.className = 'error';
+      }
+      btnResend.disabled = false;
+    });
   </script>
 </body>
 </html>

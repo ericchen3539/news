@@ -70,11 +70,12 @@ export async function register(
 
 export async function verifyEmail(token: string): Promise<{ ok: boolean; error?: string }> {
   const db = await getDb();
+  const normalizedToken = token.trim().toLowerCase();
 
   const row = await get<[number, number] | { user_id: number; expires_at: number }>(
     db,
-    "SELECT user_id, expires_at FROM verification_tokens WHERE token = ?",
-    [token]
+    "SELECT user_id, expires_at FROM verification_tokens WHERE LOWER(TRIM(token)) = ?",
+    [normalizedToken]
   );
   if (!row) {
     return { ok: false, error: "Invalid or expired token" };
@@ -83,15 +84,68 @@ export async function verifyEmail(token: string): Promise<{ ok: boolean; error?:
   const userId = Array.isArray(row) ? row[0] : row.user_id;
   const expiresAt = Array.isArray(row) ? row[1] : row.expires_at;
   if (expiresAt < Math.floor(Date.now() / 1000)) {
-    await run(db, "DELETE FROM verification_tokens WHERE token = ?", [token]);
+    await run(db, "DELETE FROM verification_tokens WHERE user_id = ? AND expires_at = ?", [userId, expiresAt]);
     saveDb();
-    return { ok: false, error: "Token expired" };
+    return { ok: false, error: "Invalid or expired token" };
   }
 
   const now = Math.floor(Date.now() / 1000);
   await run(db, "UPDATE users SET verified_at = ? WHERE id = ?", [now, userId]);
-  await run(db, "DELETE FROM verification_tokens WHERE token = ?", [token]);
+  await run(db, "DELETE FROM verification_tokens WHERE user_id = ? AND expires_at = ?", [userId, expiresAt]);
   saveDb();
+
+  return { ok: true };
+}
+
+/**
+ * Resend verification email. Deletes old tokens for the user and sends a new one.
+ */
+export async function resendVerificationEmail(
+  email: string
+): Promise<{ ok: boolean; error?: string; statusCode?: number }> {
+  const db = await getDb();
+
+  const userRow = await get<[number] | { id: number }>(db, "SELECT id FROM users WHERE email = ?", [
+    email.toLowerCase(),
+  ]);
+  if (!userRow) {
+    return { ok: false, error: "Email not found" };
+  }
+  const userId = Array.isArray(userRow) ? userRow[0] : userRow.id;
+
+  const verifiedRow = await get<[number] | { verified_at: number }>(
+    db,
+    "SELECT verified_at FROM users WHERE id = ?",
+    [userId]
+  );
+  const verifiedAt = verifiedRow ? (Array.isArray(verifiedRow) ? verifiedRow[0] : verifiedRow.verified_at) : null;
+  if (verifiedAt) {
+    return { ok: false, error: "Email already verified" };
+  }
+
+  await run(db, "DELETE FROM verification_tokens WHERE user_id = ?", [userId]);
+  saveDb();
+
+  const token = randomBytes(32).toString("hex");
+  const expiresAt = Math.floor(Date.now() / 1000) + TOKEN_EXPIRY_HOURS * 3600;
+  await run(db, "INSERT INTO verification_tokens (user_id, token, expires_at) VALUES (?, ?, ?)", [
+    userId,
+    token,
+    expiresAt,
+  ]);
+  saveDb();
+
+  const appUrl = process.env.APP_URL ?? "http://localhost:3000";
+  const verifyUrl = `${appUrl}/verify?token=${token}`;
+
+  let html: string;
+  try {
+    html = await sendVerificationEmail(email, verifyUrl);
+  } catch (err) {
+    console.error("[Auth] Failed to resend verification email:", err);
+    return { ok: false, error: "Could not send verification email. Please try again later.", statusCode: 503 };
+  }
+  await logSentEmail(userId, "verification", "请验证您的邮箱 - 新闻摘要", html);
 
   return { ok: true };
 }
