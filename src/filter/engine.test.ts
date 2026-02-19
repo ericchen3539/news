@@ -206,4 +206,17 @@ describe("filterNews", () => {
     const items = [makeItem("DHS shuts down after funding lapse", "Department of Homeland Security.")];
     expect(filterNews(items, "include", ["politics"])).toHaveLength(1);
   });
+
+  it("include mode: excludes national park reservation news (government-managed asset, not political)", () => {
+    const items = [
+      makeItem(
+        "Yosemite National Park ends its reservation system for 2026",
+        "National Park Service expands access. Reservation policy changes. 国家公园取消预订系统."
+      ),
+      makeItem("Congress passes new legislation on immigration"),
+    ];
+    const result = filterNews(items, "include", ["politics"]);
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe("Congress passes new legislation on immigration");
+  });
 });

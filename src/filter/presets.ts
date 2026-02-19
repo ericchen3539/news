@@ -202,6 +202,11 @@ export const COMMERCIAL_KEYWORDS = [
   "northern lights",
   "极光",
   "北极光",
+  // 政府管理资产运营（非政治）
+  "national park",
+  "reservation system",
+  "国家公园",
+  "预订系统",
 ];
 
 /**
