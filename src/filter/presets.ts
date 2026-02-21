@@ -150,6 +150,9 @@ const TEXT_FALSE_POSITIVES = [
   "政府敦促更新",
   // political 误匹配
   "apolitical",
+  // 白宫/政治人物出现在娱乐、健身、八卦语境（整句 strip 掉后不再匹配政治）
+  "white house had a very manly week",
+  "white house had a very manly",
 ];
 
 export function stripSourceFalsePositives(text: string): string {
@@ -213,6 +216,7 @@ export const COMMERCIAL_KEYWORDS = [
  * Explicit weak keywords: appear in many non-category contexts (e.g. "capital" in venture capital).
  * In include mode, if only weak keywords match, require matchCount >= 2 to reduce false positives.
  */
+/** Single-mention "white house" often appears in non-political context (e.g. fitness, celebrity). Require 2+ politics matches when only weak. */
 const EXPLICIT_WEAK_KEYWORDS = new Set([
   "capital",
   "government",
@@ -225,6 +229,7 @@ const EXPLICIT_WEAK_KEYWORDS = new Set([
   "经济",
   "investigation",
   "military",
+  "white house",
 ]);
 
 /**
