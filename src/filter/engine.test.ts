@@ -83,7 +83,7 @@ describe("filterNews", () => {
   it("include mode: excludes category match when keyword comes only from source domain", () => {
     const items = [
       makeItem("Rayman 30th Anniversary Edition Releases Tomorrow", "Game news from Military.com"),
-      makeItem("Military operations in the region continue"),
+      makeItem("Military operations in the region continue", "Government confirms deployment."),
     ];
     const result = filterNews(items, "include", ["politics"]);
     expect(result).toHaveLength(1);
@@ -123,7 +123,7 @@ describe("filterNews", () => {
   it("include mode: excludes game news matching God of War / 战神", () => {
     const items = [
       makeItem("God of War Sons of Sparta Co-Op Confusion on PlayStation Store", "战神斯巴达之子. Game news."),
-      makeItem("War in the region continues as tensions rise"),
+      makeItem("War in the region continues as tensions rise", "Military escalation feared."),
     ];
     const result = filterNews(items, "include", ["politics"]);
     expect(result).toHaveLength(1);
@@ -133,7 +133,7 @@ describe("filterNews", () => {
   it("include mode: excludes aurora/weather news even when matching politics keywords", () => {
     const items = [
       makeItem("Valentine's Day Aurora Alert: 12 States On Watch For Northern Lights", "State capital cities. 情人节极光警报北极光."),
-      makeItem("Capital city prepares for summit meeting"),
+      makeItem("Capital city prepares for summit meeting", "Government officials to attend."),
     ];
     const result = filterNews(items, "include", ["politics"]);
     expect(result).toHaveLength(1);
@@ -171,13 +171,13 @@ describe("filterNews", () => {
   });
 
   it("include mode: keeps political news with capital city", () => {
-    const items = [makeItem("Capital city prepares for summit meeting")];
+    const items = [makeItem("Capital city prepares for summit meeting", "Government and diplomacy.")];
     const result = filterNews(items, "include", ["politics"]);
     expect(result).toHaveLength(1);
   });
 
   it("include mode: keeps political news with military hardware", () => {
-    const items = [makeItem("Military hardware deployed to region", "Defense ministry confirms.")];
+    const items = [makeItem("Military hardware deployed to region", "Defense ministry confirms. Government statement.")];
     const result = filterNews(items, "include", ["politics"]);
     expect(result).toHaveLength(1);
   });
@@ -218,5 +218,18 @@ describe("filterNews", () => {
     const result = filterNews(items, "include", ["politics"]);
     expect(result).toHaveLength(1);
     expect(result[0].title).toBe("Congress passes new legislation on immigration");
+  });
+
+  it("include mode: excludes White House fitness/entertainment false positive (strip phrase + weak single match)", () => {
+    const items = [
+      makeItem(
+        "Bench Presses, Pull Ups ... Kid Rock? The White House Had a Very Manly Week. - The New York Times",
+        "RFK Jr. workout video. 白宫健身周."
+      ),
+      makeItem("White House announces new policy on climate"),
+    ];
+    const result = filterNews(items, "include", ["politics"]);
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe("White House announces new policy on climate");
   });
 });
