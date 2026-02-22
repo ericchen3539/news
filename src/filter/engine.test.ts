@@ -232,4 +232,34 @@ describe("filterNews", () => {
     expect(result).toHaveLength(1);
     expect(result[0].title).toBe("White House announces new policy on climate");
   });
+
+  it("include mode: keeps Homeland Security news when only full name appears", () => {
+    const items = [
+      makeItem(
+        "Homeland Security suspends TSA PreCheck and Global Entry airport security programs",
+        "Government shutdown drags. Funding lapse. NPR."
+      ),
+    ];
+    expect(filterNews(items, "include", ["politics"])).toHaveLength(1);
+  });
+
+  it("include mode: excludes UFC/sports false positive from ICE joke (strip ice joke)", () => {
+    const items = [
+      makeItem("LIVE! UFC Houston Results: Strickland vs. Hernandez", "Fluffy Hernandez ICE joke on Sean Strickland. MMA Fighting."),
+      makeItem("ICE arrests 10 in immigration enforcement operation"),
+    ];
+    const result = filterNews(items, "include", ["politics"]);
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe("ICE arrests 10 in immigration enforcement operation");
+  });
+
+  it("include mode: excludes weather emergency false positive (市政府宣布 strip)", () => {
+    const items = [
+      makeItem("Philadelphia snow updates: Latest forecast, storm timing", "市政府宣布进入降雪紧急状态. 暴风雪警告. WHYY."),
+      makeItem("Congress passes new legislation"),
+    ];
+    const result = filterNews(items, "include", ["politics"]);
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe("Congress passes new legislation");
+  });
 });
