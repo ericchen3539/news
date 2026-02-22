@@ -30,6 +30,7 @@ export const FILTER_PRESETS: Record<string, { label: string; keywords: string[] 
       "minister",
       "political",
       "dhs",
+      "homeland security", // full name when "DHS" not in text
       "ice",
       "cbp",
       "fbi",
@@ -153,6 +154,13 @@ const TEXT_FALSE_POSITIVES = [
   // 白宫/政治人物出现在娱乐、健身、八卦语境（整句 strip 掉后不再匹配政治）
   "white house had a very manly week",
   "white house had a very manly",
+  // ICE 在体育/娱乐语境（如 UFC "ICE joke"）非移民执法
+  "ice joke",
+  "ice jokes",
+  // 天气/灾害时地方政府宣布（含“政府”，strip 后该语境不触发政治）
+  "市政府宣布",
+  // 犯罪/社会新闻中“警方调查”含“调查”，strip 后该语境不再触发政治
+  "警方调查",
 ];
 
 export function stripSourceFalsePositives(text: string): string {
