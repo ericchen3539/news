@@ -90,9 +90,12 @@ export async function getUsersToNotify(): Promise<UserToNotify[]> {
     const currentMinutes = userHour * 60 + userMin;
     const sendBaseMinutes = (h ?? 0) * 60 + (m ?? 0);
     const intervalMinutes = frequencyHours * 60;
+    /** Daily send: allow 5-minute window so Vercel cron delay/cold start doesn't miss the slot. */
+    const SEND_WINDOW_MINUTES = 5;
+    const minutesPerDay = 24 * 60;
     const isSendMoment =
       frequencyHours >= 24
-        ? userHour === h && userMin === m
+        ? ((currentMinutes - sendBaseMinutes + minutesPerDay) % minutesPerDay) < SEND_WINDOW_MINUTES
         : ((currentMinutes - sendBaseMinutes + 24 * 60) % intervalMinutes) < 2;
 
     const lastDigestRow = await get<[number] | { sent_at: number }>(
@@ -268,6 +271,9 @@ export async function processUser(user: UserToNotify, trigger?: DigestTrigger): 
 
 export async function runTick(): Promise<void> {
   const users = await getUsersToNotify();
+  if (users.length > 0) {
+    console.log(`[Cron] Digest tick: ${users.length} user(s) in send window`);
+  }
   for (const user of users) {
     try {
       const { sent } = await processUser(user, "cron");
