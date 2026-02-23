@@ -161,6 +161,17 @@ const TEXT_FALSE_POSITIVES = [
   "市政府宣布",
   // 犯罪/社会新闻中“警方调查”含“调查”，strip 后该语境不再触发政治
   "警方调查",
+  // 电视剧/娱乐：剧名含 CIA/FBI，非政府机构
+  "cia premiere",
+  "fbi wedding",
+  "fbi universe",
+  "联邦调查局婚礼",
+  "中央情报局首映",
+  // “voice” 含 “vote” 会误触政治；综艺名 strip
+  "the voice return",
+  // FBI 在科技/消费语境（如路由器安全警告）strip 后不单独触发政治
+  "fbi says these wi-fi routers",
+  "fbi says these wi-fi",
 ];
 
 export function stripSourceFalsePositives(text: string): string {

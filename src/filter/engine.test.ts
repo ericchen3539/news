@@ -4,6 +4,7 @@
 
 import { describe, it, expect } from "vitest";
 import { filterNews } from "./engine.js";
+import { stripSourceFalsePositives } from "./presets.js";
 
 const makeItem = (title: string, summary = ""): { title: string; summary: string; link: string; sourceLabel: string } => ({
   title,
@@ -261,5 +262,31 @@ describe("filterNews", () => {
     const result = filterNews(items, "include", ["politics"]);
     expect(result).toHaveLength(1);
     expect(result[0].title).toBe("Congress passes new legislation");
+  });
+
+  it("include mode: excludes TV/entertainment false positive (CIA Premiere, FBI Wedding strip)", () => {
+    const title = "What To Watch Monday: CIA Premiere, FBI Wedding, Paradise And The Voice Return";
+    const summary = "TVLine. FBI universe. Drama.";
+    const raw = `${(title + " " + summary).toLowerCase()}`;
+    const stripped = stripSourceFalsePositives(raw);
+    expect(stripped).not.toMatch(/\bfbi\b/);
+
+    const items = [
+      makeItem(title, summary),
+      makeItem("FBI raids suspect in Capitol investigation"),
+    ];
+    const result = filterNews(items, "include", ["politics"]);
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe("FBI raids suspect in Capitol investigation");
+  });
+
+  it("include mode: excludes tech/consumer false positive (FBI Wi-Fi routers strip)", () => {
+    const items = [
+      makeItem("The FBI Says These Wi-Fi Routers Are Unsafe, And Here's Why", "SlashGear. FBI says these Wi-Fi routers. cnBeta."),
+      makeItem("DOJ announces indictment in fraud case"),
+    ];
+    const result = filterNews(items, "include", ["politics"]);
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe("DOJ announces indictment in fraud case");
   });
 });
