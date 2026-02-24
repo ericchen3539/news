@@ -172,6 +172,8 @@ const TEXT_FALSE_POSITIVES = [
   // FBI 在科技/消费语境（如路由器安全警告）strip 后不单独触发政治
   "fbi says these wi-fi routers",
   "fbi says these wi-fi",
+  // 商业/并购稿中顺带提“政治成为焦点”，strip 后不以政治为主的不误入
+  "政治成为焦点",
 ];
 
 export function stripSourceFalsePositives(text: string): string {

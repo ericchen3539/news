@@ -289,4 +289,14 @@ describe("filterNews", () => {
     expect(result).toHaveLength(1);
     expect(result[0].title).toBe("DOJ announces indictment in fraud case");
   });
+
+  it("include mode: excludes business headline with 政治成为焦点 strip (business-first, politics in passing)", () => {
+    const items = [
+      makeItem("Paramount submits higher offer for Warner Bros Discovery in bid to block Netflix", "消息人士称. 政治成为焦点. 路透社 派拉蒙下一步."),
+      makeItem("国会通过新法案"),
+    ];
+    const result = filterNews(items, "include", ["politics"]);
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe("国会通过新法案");
+  });
 });
