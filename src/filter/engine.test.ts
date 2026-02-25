@@ -299,4 +299,14 @@ describe("filterNews", () => {
     expect(result).toHaveLength(1);
     expect(result[0].title).toBe("国会通过新法案");
   });
+
+  it("include mode: excludes literary/culture false positive (political vulture strip)", () => {
+    const items = [
+      makeItem("Years ago, novelist Tayari Jones snuck into a writing class. It changed her life", "NPR. Tayari Jones respected political vulture. 文学中心."),
+      makeItem("Congress passes new legislation"),
+    ];
+    const result = filterNews(items, "include", ["politics"]);
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe("Congress passes new legislation");
+  });
 });

@@ -174,6 +174,9 @@ const TEXT_FALSE_POSITIVES = [
   "fbi says these wi-fi",
   // 商业/并购稿中顺带提“政治成为焦点”，strip 后不以政治为主的不误入
   "政治成为焦点",
+  // 文学/文化报道中“political vulture”多为媒体名或比喻，非政治议题
+  "political vulture",
+  "政治秃鹫",
 ];
 
 export function stripSourceFalsePositives(text: string): string {
