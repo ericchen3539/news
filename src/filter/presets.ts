@@ -177,6 +177,11 @@ const TEXT_FALSE_POSITIVES = [
   // 文学/文化报道中“political vulture”多为媒体名或比喻，非政治议题
   "political vulture",
   "政治秃鹫",
+  // 体育：投票/评选语境，非选举
+  "fan vote",
+  "mvp vote",
+  // 商业/科技：市场调查含“调查”，strip 后不单独触发政治
+  "市场调查",
 ];
 
 export function stripSourceFalsePositives(text: string): string {
@@ -240,7 +245,7 @@ export const COMMERCIAL_KEYWORDS = [
  * Explicit weak keywords: appear in many non-category contexts (e.g. "capital" in venture capital).
  * In include mode, if only weak keywords match, require matchCount >= 2 to reduce false positives.
  */
-/** Single-mention "white house" often appears in non-political context (e.g. fitness, celebrity). Require 2+ politics matches when only weak. */
+/** Single-mention "white house" / "president" often in non-political context (company president, league president). Require 2+ politics matches when only weak. */
 const EXPLICIT_WEAK_KEYWORDS = new Set([
   "capital",
   "government",
@@ -254,6 +259,7 @@ const EXPLICIT_WEAK_KEYWORDS = new Set([
   "investigation",
   "military",
   "white house",
+  "president",
 ]);
 
 /**

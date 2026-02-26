@@ -309,4 +309,14 @@ describe("filterNews", () => {
     expect(result).toHaveLength(1);
     expect(result[0].title).toBe("Congress passes new legislation");
   });
+
+  it("include mode: excludes company/league president false positive (president as weak)", () => {
+    const items = [
+      makeItem("New Samsung Galaxy S26 phones just dropped: here's everything you need to know", "NBC News. President of Samsung Mobile unveiled. 华尔街日报."),
+      makeItem("President Biden signs new legislation"),
+    ];
+    const result = filterNews(items, "include", ["politics"]);
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe("President Biden signs new legislation");
+  });
 });
