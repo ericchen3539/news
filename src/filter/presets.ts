@@ -182,6 +182,11 @@ const TEXT_FALSE_POSITIVES = [
   "mvp vote",
   // 商业/科技：市场调查含“调查”，strip 后不单独触发政治
   "市场调查",
+  // 产品/游戏/技术演示含“demonstration”，非抗议/示威
+  "product demonstration",
+  "game demonstration",
+  "技术演示",
+  "产品演示",
 ];
 
 export function stripSourceFalsePositives(text: string): string {
@@ -245,7 +250,7 @@ export const COMMERCIAL_KEYWORDS = [
  * Explicit weak keywords: appear in many non-category contexts (e.g. "capital" in venture capital).
  * In include mode, if only weak keywords match, require matchCount >= 2 to reduce false positives.
  */
-/** Single-mention "white house" / "president" often in non-political context (company president, league president). Require 2+ politics matches when only weak. */
+/** Single-mention in non-political context (company president, product demo, annual congress). Require 2+ politics matches when only weak. */
 const EXPLICIT_WEAK_KEYWORDS = new Set([
   "capital",
   "government",
@@ -260,6 +265,10 @@ const EXPLICIT_WEAK_KEYWORDS = new Set([
   "military",
   "white house",
   "president",
+  "protest",
+  "demonstration",
+  "congress",
+  "senate",
 ]);
 
 /**
