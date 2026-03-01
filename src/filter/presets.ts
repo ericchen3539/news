@@ -250,7 +250,7 @@ export const COMMERCIAL_KEYWORDS = [
  * Explicit weak keywords: appear in many non-category contexts (e.g. "capital" in venture capital).
  * In include mode, if only weak keywords match, require matchCount >= 2 to reduce false positives.
  */
-/** Single-mention in non-political context (company president, product demo, annual congress). Require 2+ politics matches when only weak. */
+/** Single-mention in non-political context (company president, product demo). Require 2+ politics matches when only weak. congress/senate 保留强词，避免“Congress faces deadline”等真政治被漏。 */
 const EXPLICIT_WEAK_KEYWORDS = new Set([
   "capital",
   "government",
@@ -267,8 +267,6 @@ const EXPLICIT_WEAK_KEYWORDS = new Set([
   "president",
   "protest",
   "demonstration",
-  "congress",
-  "senate",
 ]);
 
 /**
