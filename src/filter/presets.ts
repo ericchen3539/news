@@ -165,6 +165,8 @@ const TEXT_FALSE_POSITIVES = [
   "cia premiere",
   "fbi wedding",
   "fbi universe",
+  "since 'fbi'",
+  "since fbi",
   "联邦调查局婚礼",
   "中央情报局首映",
   // “voice” 含 “vote” 会误触政治；综艺名 strip
@@ -187,6 +189,12 @@ const TEXT_FALSE_POSITIVES = [
   "game demonstration",
   "技术演示",
   "产品演示",
+  // 科技/商业稿中“state”“market”常同时出现，strip 后不因双弱词误入政治
+  "state of the market",
+  "state of the smartphone",
+  "state of the industry",
+  "state of the art",
+  "united states market",
 ];
 
 export function stripSourceFalsePositives(text: string): string {

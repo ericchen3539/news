@@ -319,4 +319,14 @@ describe("filterNews", () => {
     expect(result).toHaveLength(1);
     expect(result[0].title).toBe("President Biden signs new legislation");
   });
+
+  it("include mode: excludes tech/business false positive (state of the market strip)", () => {
+    const items = [
+      makeItem("Tech roundup", "State of the market. United States market. State of the art."),
+      makeItem("Congress passes new legislation"),
+    ];
+    const result = filterNews(items, "include", ["politics"]);
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe("Congress passes new legislation");
+  });
 });
